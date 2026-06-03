@@ -51,6 +51,8 @@ git clone https://github.com/yourusername/WOWFC.git WowFC
 4. Click the "Load ROM" button in the addon interface to select and load a game
 
 > **Note**: ROM files may have copyright issues. Please do not commit ROM files to the repository.
+>
+> **ROM Download**: You can download NES ROM files from [ROMSFUN](https://romsfun.com/roms/nes/)
 
 ### Key Binding
 
@@ -106,9 +108,7 @@ This project is based on:
 
 This project is open-sourced under the [MIT License](LICENSE).
 
-## Acknowledgments
 
-- Thanks to the WoW addon development community
 
 ## Authors
 

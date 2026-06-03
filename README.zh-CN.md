@@ -51,6 +51,8 @@ git clone https://github.com/你的用户名/WOWFC.git WowFC
 4. 点击插件界面上的"加载ROM"按钮选择并加载游戏
 
 > **注意**：ROM 文件可能有版权问题，请勿在仓库中提交 ROM 文件。
+>
+> **ROM 下载**：可以从 [ROMSFUN](https://romsfun.com/roms/nes/) 下载 NES ROM 文件
 
 ### 按键设置
 
@@ -106,9 +108,7 @@ WowFC/
 
 本项目采用 [MIT 协议](LICENSE) 开源。
 
-## 致谢
 
-- 感谢魔兽插件开发社区的支持
 
 ## 作者
 
