@@ -101,8 +101,12 @@ This project is based on:
 ## Known Limitations
 
 - **No Audio**: APU (Audio Processing Unit) is not emulated, so there is no sound output
-- **Limited Mapper Support**: Currently only supports Mapper 0, 1, and 4
-- **Performance**: Frame skip may be required on lower-end systems to maintain playable speed
+- **Limited Mapper Support**: Currently only supports Mapper 0, 1, and 4. Limited ROM compatibility
+- **Performance Issues**: Performance issues exist. Frame skip may be required on lower-end systems to maintain playable speed
+
+## Project Status
+
+⚠️ **Current version is for testing only**. There are many limitations and issues. Pull Requests are welcome to help improve the project!
 
 ## License
 

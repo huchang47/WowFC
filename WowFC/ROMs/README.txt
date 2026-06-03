@@ -13,11 +13,6 @@
 
 注意：ROM 文件可能有版权问题，本插件不会提供任何ROM文件。
 
-限制说明：
-- 当前仅支持部分 Mapper（Mapper 0、1、4）
-- 存在性能问题，可能需要开启帧跳过
-- 目前仅用于测试，欢迎提交 PR 改进
-
 ----------------------------------------
 
 Please place .nes format ROM files in this directory
@@ -30,8 +25,3 @@ Instructions:
 5. Click the "Load ROM" button in the addon interface to select and load a game
 
 Note: ROM files may have copyright issues. This addon does not provide any ROM files.
-
-Limitations:
-- Only supports certain mappers (Mapper 0, 1, 4)
-- Performance issues may require frame skip
-- Currently for testing only, PRs welcome
