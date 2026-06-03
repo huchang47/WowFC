@@ -195,6 +195,17 @@ function PPU:new(nes)
     ppu.buffer = Buffer.newU32(256 * 240, 0)
     ppu.bgbuffer = Buffer.newU32(256 * 240, 0)
     ppu.pixrendered = Buffer.newU32(256 * 240, 0)
+
+    -- ============================================================
+    -- cycle-accurate 逐扫描线渲染状态(可选,默认关闭)
+    -- _perScanline:本帧是否走逐扫描线渲染。默认 false(vblank 整帧快照,性能最优)。
+    --   置 true(经 /fc scanline on 或 FC:setScanlineMode)后:CPU/PPU 交错推进,
+    --   每条可见行用当时活动的滚动量/CHR bank 即时渲染,并算出真实 sprite 0 hit,
+    --   支持 mid-frame split / sprite0-hit 依赖的游戏。代价约 2x 渲染开销。
+    -- _slActive:本帧是否已做帧首初始化(v=t、快照 palette/nametable、清缓冲)。
+    -- ============================================================
+    ppu._perScanline = false
+    ppu._slActive = false
     
     -- 名称表
     ppu.nameTable = {}
@@ -645,6 +656,8 @@ function PPU:startFrame()
     self.frameEnded = false
     self.scanline = 0
     self.curX = 0
+    -- 逐扫描线模式:本帧首个可见行触发 _slBeginFrame 重新初始化
+    self._slActive = false
 end
 
 -- 推进 PPU 周期
@@ -666,6 +679,25 @@ function PPU:advanceDots(dots)
 end
 
 function PPU:endScanline()
+    -- ----------------------------------------------------------------
+    -- cycle-accurate 逐扫描线渲染(非 SMB1):在每条可见行"结束"边界,用此刻
+    -- 活动的 v 寄存器(滚动量 + nametable)和 CHR bank 渲染这一行,并即时计算
+    -- 真实的 sprite 0 hit。进入本函数时 self.scanline 仍是"刚跑完的那一行"。
+    -- 必须在 mapper IRQ tick 之前画 —— IRQ handler 改的滚动量/bank 是给后续行的。
+    -- ----------------------------------------------------------------
+    if self._perScanline then
+        local sl = self.scanline
+        if sl >= 0 and sl <= 239 then
+            if not self._slActive then
+                self:_slBeginFrame()
+            end
+            self:_slRenderLine(sl)
+            -- 行末 v 垂直自增(NES dot 256),行首水平位从 t 恢复(NES dot 257)
+            self:_slIncVertical()
+            self:_slCopyHorizontal()
+        end
+    end
+
     self.scanline = self.scanline + 1
 
     -- mapper IRQ 钩子(MMC3 等):在每根可见扫描线渲染完毕时 tick 一次。
@@ -704,6 +736,12 @@ function PPU:endScanline()
 end
 
 function PPU:renderFrame()
+    -- 逐扫描线模式(非 SMB1):BG/sprite 已在可见期由 endScanline 逐行画进 buffer。
+    -- 这里只做帧末元数据收尾,不再整帧重画。
+    if self._perScanline then
+        return self:_slFinishFrame()
+    end
+
     -- ----------------------------------------------------------------
     -- 帧开始:模拟 NES pre-render scanline 的 t→v 行为。
     -- SMB1 NMI 在 vblank 期间写 $2005 (PPUSCROLL) 更新 t 寄存器;
@@ -943,6 +981,159 @@ function PPU:renderScanline(y)
     if self.f_spVisibility == 1 then
         self:renderSprites(y)
     end
+end
+
+-- ================================================================
+-- cycle-accurate 逐扫描线渲染实现(非 SMB1 游戏)
+-- ----------------------------------------------------------------
+-- 与单快照 renderFrame 的本质区别:CPU/PPU 交错推进,每条可见行在它
+-- "结束"的时刻(endScanline)被渲染,读取此刻活动的 v 寄存器 + CHR bank,
+-- 并即时计算真实 sprite 0 hit。这让游戏的 sprite0-hit 轮询循环能正常解锁,
+-- 也支持 mid-frame 改滚动/bank 的 raster split(松鼠大作战2 标题等)。
+--
+-- v/t 模型(Loopy):
+--   帧首        v = t        (_slBeginFrame,等价 pre-render 行的 t→v)
+--   每行末      v 垂直自增    (_slIncVertical,NES dot 256)
+--   每行起      v 水平位 = t  (_slCopyHorizontal,NES dot 257)
+-- ================================================================
+
+-- 帧首初始化:v=t、快照 palette/nametable、清缓冲、建可见 sprite 列表
+function PPU:_slBeginFrame()
+    self._slActive = true
+    self:_loadVFromT()
+
+    -- palette 快照
+    for p = 0, 3 do
+        for c = 1, 3 do
+            local ci = self:readVRAM(0x3F00 + p * 4 + c) % 64
+            self._paletteCache[p * 4 + c] = self.palette[ci] or 0
+            local si = self:readVRAM(0x3F10 + p * 4 + c) % 64
+            self._spritePaletteCache[p * 4 + c] = self.palette[si] or 0
+        end
+    end
+    self._bgColor = self.palette[self:readVRAM(0x3F00) % 64] or 0
+
+    -- nametable 快照(经镜像表)
+    local ntCache = self._ntCache
+    local mirrorTable = self.vramMirrorTable
+    local vramMem = self.vramMem
+    for addr = 0x2000, 0x2FFF do
+        ntCache[addr] = vramMem[mirrorTable[addr] or addr] or 0
+    end
+
+    -- 清 bgbuffer/pixrendered/buffer
+    local bgColor = self._bgColor
+    local bgbuf = self.bgbuffer
+    local pixren = self.pixrendered
+    local buf = self.buffer
+    for i = 0, 256 * 240 - 1 do
+        bgbuf[i] = bgColor
+        pixren[i] = 0
+        buf[i] = bgColor
+    end
+
+    -- 可见 sprite 列表(整帧用 OAM 帧首快照)
+    self:_buildVisibleSpriteList()
+    self._curSpriteN = 0
+end
+
+-- v 垂直自增(NES dot 256)
+function PPU:_slIncVertical()
+    local v = self.vramAddress
+    if band(v, 0x7000) ~= 0x7000 then
+        v = v + 0x1000
+    else
+        v = band(v, 0x0FFF)
+        local y = band(rshift(v, 5), 0x1F)
+        if y == 29 then
+            y = 0
+            v = bxor(v, 0x0800)
+        elseif y == 31 then
+            y = 0
+        else
+            y = y + 1
+        end
+        v = bor(band(v, 0x7C1F), lshift(y, 5))
+    end
+    self.vramAddress = toU16(v)
+    self:_syncRegsFromV()
+end
+
+-- v 水平位从 t 恢复(NES dot 257):coarse X(bit0-4)+ 水平 nametable(bit10)
+function PPU:_slCopyHorizontal()
+    self.vramAddress = bor(band(self.vramAddress, 0x7BE0), band(self.vramTmpAddress, 0x041F))
+    self:_syncRegsFromV()
+end
+
+-- 渲染一条可见行:BG(用 live v)→ 合成到 buffer → sprite(带真实 sprite0 hit)
+function PPU:_slRenderLine(y)
+    if self.f_bgVisibility == 1 then
+        self:_slRenderBgLine(y)
+    end
+
+    -- 合成本行 BG → buffer(sprite 会在其上覆盖)
+    local buf = self.buffer
+    local bgbuf = self.bgbuffer
+    local base = y * 256
+    for x = 0, 255 do
+        buf[base + x] = bgbuf[base + x]
+    end
+
+    -- sprite:复用现有 renderSprites(y)/renderSpriteTile,内含 sprite0 hit 检测
+    if self.f_spVisibility == 1 then
+        self:renderSprites(y)
+    end
+end
+
+-- 用当前 v 渲染一条 BG 扫描线到 bgbuffer(完全按 v 取景,无任何 hack)
+function PPU:_slRenderBgLine(y)
+    local v = self.vramAddress
+    local coarseX = band(v, 0x1F)
+    local coarseY = band(rshift(v, 5), 0x1F)
+    local ntBase  = band(rshift(v, 10), 0x3)
+    local fineY   = band(rshift(v, 12), 0x7)
+    local fineX   = self.regFH
+
+    local highTable = self.f_bgPatternTable == 1
+    local ntCache = self._ntCache
+    local renderTile = self.renderTile
+
+    for tileX = 0, 32 do
+        local cx = coarseX + tileX
+        local sel = ntBase
+        if cx >= 32 then
+            cx = cx - 32
+            sel = bxor(sel, 1)
+        end
+        local cy = coarseY
+        if cy >= 30 then
+            cy = cy - 30
+            sel = bxor(sel, 2)
+        end
+
+        local nameTableAddr = 0x2000 + sel * 0x400
+        local tileIndex = ntCache[nameTableAddr + cy * 32 + cx] or 0
+        local attrAddr = nameTableAddr + 0x3C0 + math.floor(cy / 4) * 8 + math.floor(cx / 4)
+        local attr = ntCache[attrAddr] or 0
+        local shift = band(cx, 2) + lshift(band(cy, 2), 1)
+        local paletteNum = band(rshift(attr, shift), 3)
+
+        renderTile(self, tileX * 8 - fineX, y, tileIndex, paletteNum, highTable, fineY)
+    end
+end
+
+-- 帧末收尾:逐扫描线模式 BG/sprite 已逐行画进 buffer,这里只设元数据。
+function PPU:_slFinishFrame()
+    -- 兜底:整帧无可见行触发(理论上不会),至少铺底色
+    if not self._slActive then
+        self:_slBeginFrame()
+    end
+    -- 逐扫描线模式总是整屏 present
+    self._frameMode = "full"
+    self._frameUndoN = 0
+    self._frameNewList = self._curSpritePixels
+    self._frameNewN = self._curSpriteN
+    self._slActive = false
 end
 
 -- 渲染背景

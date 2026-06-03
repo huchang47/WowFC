@@ -94,6 +94,24 @@ function addon:OnInitialize()
             end
         elseif msg == "debug" then
             self:ShowDebugInfo()
+        elseif msg:match("^scanline") then
+            local rest = msg:match("^scanline%s+(%S+)$")
+            if not nes then
+                print("|cffff0000WOWFC|r: 未加载ROM")
+            elseif rest == "on" then
+                local r = nes:setScanlineMode(true)
+                if r then
+                    print("|cff00ff00WOWFC|r: 逐扫描线渲染已|cff00ff00开启|r(支持 mid-frame 分屏/sprite0-hit,约 2x 开销)")
+                else
+                    print("|cffff8800WOWFC|r: 当前为 SMB1 专用路径,逐扫描线开关无效")
+                end
+            elseif rest == "off" then
+                nes:setScanlineMode(false)
+                print("|cff00ff00WOWFC|r: 逐扫描线渲染已|cffff0000关闭|r(vblank 整帧快照,性能最优)")
+            else
+                print(string.format("|cffff8800WOWFC|r: 逐扫描线 = %s。用法 /fc scanline <on|off>",
+                    nes:getScanlineMode() and "on" or "off"))
+            end
         elseif msg == "boost" then
             WOWFCDB = WOWFCDB or {}
             WOWFCDB.boostDisabled = not WOWFCDB.boostDisabled

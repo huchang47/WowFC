@@ -116,6 +116,7 @@ end
 -- 命中即认为是 SMB1 (含汉化版/盗版,只要 NMI handler 没改),启用 hack。
 function FC:_detectSmb1Hack()
     self._smb1HackEnabled = false
+    self.ppu._perScanline = false   -- 默认走快照路径(性能最优)
     if not self.rom or self.rom.mapperType ~= 0 then return end
     local prg = self.rom.rom
     if not prg then return end
@@ -375,13 +376,28 @@ function FC:frame()
                 -- SMB1 主线程在 ColdBoot 末尾 jmp 自己等待 NMI,所有游戏逻辑在 NMI handler。
                 -- 没这个优化,我们每帧浪费 1.5M+ JMP 指令(占总指令 70%)。
                 -- 检测后直接消耗剩余 cycle 让 PPU 跑完帧 → frameEnded → 触发 NMI。
+                --
+                -- 逐扫描线模式只快进到"当前扫描线末"而非整帧:整帧快进会跳过逐行
+                -- 渲染与 sprite0-hit / IRQ 时序。JMP self 一旦被解锁(sprite0 hit 等)
+                -- 游戏会跳出循环,所以逐行快进仍能省掉行内的空转 JMP。
                 if cpu._jmpSelfDetected then
                     cpu._jmpSelfDetected = false
-                    local remaining = CYCLES_PER_FRAME - cycleCount
-                    if remaining > 0 then
-                        ppu:advanceDots(remaining * 3)
-                        cycleCount = CYCLES_PER_FRAME
-                        cpu._cpuCycleBase = cpu._cpuCycleBase + remaining
+                    if ppu._perScanline then
+                        -- 推进到本扫描线末(341 dots 边界),触发 endScanline 渲染该行
+                        local toLineEnd = (341 - ppu.curX)
+                        if toLineEnd > 0 then
+                            ppu:advanceDots(toLineEnd)
+                            local consumed = math.ceil(toLineEnd / 3)
+                            cpu._cpuCycleBase = cpu._cpuCycleBase + consumed
+                            cycleCount = cycleCount + consumed
+                        end
+                    else
+                        local remaining = CYCLES_PER_FRAME - cycleCount
+                        if remaining > 0 then
+                            ppu:advanceDots(remaining * 3)
+                            cycleCount = CYCLES_PER_FRAME
+                            cpu._cpuCycleBase = cpu._cpuCycleBase + remaining
+                        end
                     end
                 end
 
@@ -629,6 +645,23 @@ function FC:setFrameSkip(n)
     self._frameSkip = n
     self._frameSkipCount = 0
     return n
+end
+
+-- 逐扫描线(cycle-accurate)渲染开关。
+-- 默认关闭:绝大多数游戏用 vblank 整帧快照渲染即可,性能最优。
+-- 开启后:CPU/PPU 交错推进,每条可见行用当时的滚动量/CHR bank 即时渲染,
+-- 并算出真实 sprite 0 hit,可解锁少数依赖 mid-frame split / sprite0-hit 的游戏。
+-- 代价:每帧整屏逐行重画,约 2x 渲染开销。SMB1(_smb1HackEnabled)忽略此开关。
+function FC:setScanlineMode(on)
+    if self._smb1HackEnabled then
+        return false  -- SMB1 走专用整帧路径,不参与逐扫描线
+    end
+    self.ppu._perScanline = on and true or false
+    return self.ppu._perScanline
+end
+
+function FC:getScanlineMode()
+    return self.ppu and self.ppu._perScanline or false
 end
 
 -- 自适应帧跳过:在 WowFC 的瓶颈结构下(CPU 占主导,render 只 ~14%),

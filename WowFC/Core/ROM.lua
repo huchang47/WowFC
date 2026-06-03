@@ -203,6 +203,8 @@ function ROM:createMapper()
     local mapperClasses = {
         [0] = _G.Mapper0,
         [1] = _G.Mapper1,
+        [2] = _G.Mapper2,
+        [3] = _G.Mapper3,
         [4] = _G.Mapper4,
     }
     local cls = mapperClasses[self.mapperType]
