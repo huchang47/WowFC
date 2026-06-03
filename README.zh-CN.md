@@ -7,6 +7,8 @@
 ![Interface](https://img.shields.io/badge/WoW-12.0+-orange)
 ![License](https://img.shields.io/badge/License-MIT-blue)
 
+![截图](screenshot.png)
+
 ## 功能特性
 
 - 在魔兽世界中运行 FC/NES 游戏

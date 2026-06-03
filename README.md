@@ -7,6 +7,8 @@ A World of Warcraft addon that runs FC/NES games inside the game.
 ![Interface](https://img.shields.io/badge/WoW-12.0+-orange)
 ![License](https://img.shields.io/badge/License-MIT-blue)
 
+![Screenshot](screenshot.png)
+
 ## Features
 
 - Run FC/NES games inside World of Warcraft
