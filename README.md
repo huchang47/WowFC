@@ -73,16 +73,26 @@ Click the "Key Binding" button in the interface to customize keyboard mappings f
 
 ```
 WowFC/
-├── Core/           # Emulator core
-│   ├── CPU.lua     # 6502 CPU emulation
-│   ├── PPU.lua     # Picture Processing Unit
-│   ├── ROM.lua     # ROM loader
-│   ├── FC.lua      # Main emulator logic
-│   └── Mappers/    # Various mapper implementations
-├── Utils/          # Utility modules
-├── UltraRenderer.lua  # Renderer
-├── Keybinding.lua  # Key binding
-└── WOWFC.lua       # Addon main entry
+├── Core/                  # Emulator core
+│   ├── CPU.lua            # 6502 CPU emulation
+│   ├── Controller.lua     # Controller input
+│   ├── FC.lua             # Main emulator logic
+│   ├── PPU.lua            # Picture Processing Unit
+│   ├── ROM.lua            # ROM loader
+│   └── Mappers/           # Various mapper implementations
+├── Utils/                 # Utility modules
+│   ├── BitOps.lua         # Bitwise operations
+│   ├── Buffer.lua         # Buffer utilities
+│   ├── ROMData.lua        # ROM data management
+│   └── ROMData_Generated.lua  # Generated ROM data
+├── ROMs/                  # ROM files directory
+│   └── README.txt         # ROM usage instructions
+├── Tools/                 # Development tools
+│   ├── convert_roms.py    # ROM conversion tool
+│   └── scan_compat.py     # Compatibility scanner
+├── UltraRenderer.lua      # Renderer
+├── Keybinding.lua         # Key binding
+└── WOWFC.lua              # Addon main entry
 ```
 
 ## Technical Notes

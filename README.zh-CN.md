@@ -73,16 +73,26 @@ git clone https://github.com/你的用户名/WOWFC.git WowFC
 
 ```
 WowFC/
-├── Core/           # 模拟器核心
-│   ├── CPU.lua     # 6502 CPU 模拟
-│   ├── PPU.lua     # 图像处理单元
-│   ├── ROM.lua     # ROM 加载器
-│   ├── FC.lua      # 主模拟器逻辑
-│   └── Mappers/    # 各种 Mapper 实现
-├── Utils/          # 工具模块
-├── UltraRenderer.lua  # 渲染器
-├── Keybinding.lua  # 按键映射
-└── WOWFC.lua       # 插件主入口
+├── Core/                  # 模拟器核心
+│   ├── CPU.lua            # 6502 CPU 模拟
+│   ├── Controller.lua     # 手柄控制器
+│   ├── FC.lua             # 主模拟器逻辑
+│   ├── PPU.lua            # 图像处理单元
+│   ├── ROM.lua            # ROM 加载器
+│   └── Mappers/           # 各种 Mapper 实现
+├── Utils/                 # 工具模块
+│   ├── BitOps.lua         # 位运算工具
+│   ├── Buffer.lua         # 缓冲区工具
+│   ├── ROMData.lua        # ROM 数据管理
+│   └── ROMData_Generated.lua  # 生成的 ROM 数据
+├── ROMs/                  # ROM 文件目录
+│   └── README.txt         # ROM 使用说明
+├── Tools/                 # 开发工具
+│   ├── convert_roms.py    # ROM 转换工具
+│   └── scan_compat.py     # 兼容性扫描工具
+├── UltraRenderer.lua      # 渲染器
+├── Keybinding.lua         # 按键映射
+└── WOWFC.lua              # 插件主入口
 ```
 
 ## 技术说明
