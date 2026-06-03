@@ -1,0 +1,34 @@
+## Interface: 120005
+## Title: WOWFC
+## Title-zhCN: 魔兽世界FC模拟器
+## Notes: FC/NES Emulator for World of Warcraft
+## Notes-zhCN: 小霸王其乐无穷啊
+## Author: [黑科研]胡涂
+## Version: 1.0.0
+## SavedVariables: WOWFCDB
+
+# Utils
+Utils\BitOps.lua
+Utils\Buffer.lua
+Utils\ROMData_Generated.lua
+
+# Core
+Core\CPU.lua
+Core\PPU.lua
+Core\ROM.lua
+Core\Controller.lua
+Core\FC.lua
+
+# Mappers
+Core\Mappers\Mapper0.lua
+Core\Mappers\Mapper1.lua
+Core\Mappers\Mapper4.lua
+
+# Rendering
+UltraRenderer.lua
+
+# Keybinding
+Keybinding.lua
+
+# Main
+WOWFC.lua
