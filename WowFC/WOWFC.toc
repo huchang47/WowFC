@@ -16,6 +16,7 @@ Utils\APUToneMap_Generated.lua
 # Core
 Core\CPU.lua
 Core\PPU.lua
+Core\APU.lua
 Core\ROM.lua
 Core\Controller.lua
 Core\APU.lua

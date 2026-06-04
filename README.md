@@ -32,7 +32,7 @@ A World of Warcraft addon that runs FC/NES games inside the game.
 
 ```bash
 cd "World of Warcraft\_retail_\Interface\AddOns"
-git clone https://github.com/yourusername/WOWFC.git WowFC
+git clone https://github.com/huchang47/WOWFC.git WowFC
 ```
 
 ## Usage
@@ -110,8 +110,13 @@ This project is based on:
 
 ## Known Limitations
 
-- **No Audio**: APU (Audio Processing Unit) is not emulated, so there is no sound output
-- **Limited Mapper Support**: Currently only supports Mapper 0, 1, and 4. Limited ROM compatibility
+- **No Audio**: APU (Audio Processing Unit) is partially emulated for game compatibility, but there is no actual sound output. This is a technical limitation of the WoW addon environment:
+  - WoW's `PlaySoundFile()` API can only play pre-existing audio files (must exist before login)
+  - There is no real-time PCM streaming API or waveform synthesis interface
+  - NES generates 735 audio samples per frame (~16ms), requiring real-time synthesis
+  - Attempted workarounds (pre-generated sound banks, external audio bridges) all failed due to latency, gaps, or ToS violations
+  - The APU emulation exists to ensure game compatibility (some games rely on APU registers and DMC IRQ for split-screen effects)
+- **Limited Mapper Support**: Currently supports Mapper 0, 1, 2, 3, and 4. Some games may still not run due to unimplemented mappers
 - **Performance Issues**: Performance issues exist. Frame skip may be required on lower-end systems to maintain playable speed
 
 ## Project Status

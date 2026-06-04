@@ -32,7 +32,7 @@
 
 ```bash
 cd "World of Warcraft\_retail_\Interface\AddOns"
-git clone https://github.com/你的用户名/WOWFC.git WowFC
+git clone https://github.com/huchang47/WOWFC.git WowFC
 ```
 
 ## 使用方法
@@ -110,8 +110,13 @@ WowFC/
 
 ## 已知限制
 
-- **无声音**：APU（音频处理单元）尚未模拟，因此没有声音输出
-- **Mapper 支持有限**：目前仅支持 Mapper 0、1 和 4，可运行的 ROM 有限
+- **无声音**：APU（音频处理单元）已部分模拟以保证游戏兼容性，但无法输出实际声音。这是 WoW 插件环境的技术限制：
+  - WoW 的 `PlaySoundFile()` API 只能播放登录前已存在的音频文件
+  - 没有实时 PCM 流式传输 API 或波形合成接口
+  - NES 每帧（~16ms）产生 735 个音频采样，需要实时合成
+  - 尝试过的方案（预生成音效库、外部音频桥接）均因延迟、断音或违反 ToS 而失败
+  - APU 模拟的存在是为了确保游戏兼容性（部分游戏依赖 APU 寄存器和 DMC IRQ 实现分屏特效）
+- **Mapper 支持有限**：目前支持 Mapper 0、1、2、3 和 4，部分游戏可能因 Mapper 未实现而无法运行
 - **性能问题**：存在性能问题，在配置较低的电脑上可能需要开启帧跳过以保持可玩性
 
 ## 项目状态
@@ -121,8 +126,6 @@ WowFC/
 ## 开源协议
 
 本项目采用 [MIT 协议](LICENSE) 开源。
-
-
 
 ## 作者
 
