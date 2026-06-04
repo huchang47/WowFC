@@ -70,12 +70,10 @@ def generate_rom_data_file(roms_dir, output_file):
     # 生成 Lua 代码
     header = """-- ROMData_Generated.lua
 -- 自动生成的 ROM 数据文件
--- 请勿手动编辑
--- 生成时间: 自动生成
-
-local _, addon = ...
+-- 请勿手动编辑（由 tools/convert_roms.py 生成）
 
 -- ROM 数据存储
+-- 游戏内通过 _G.WOWFC_ROM_DATA[filename] 直接读取（见 WOWFC.lua:ReadROMFile）
 _G.WOWFC_ROM_DATA = _G.WOWFC_ROM_DATA or {}
 
 """
@@ -94,17 +92,8 @@ _G.WOWFC_ROM_DATA = _G.WOWFC_ROM_DATA or {}
                 total_size += len(bytes_data)
                 print(f"已处理: {rom_file} ({len(bytes_data)} bytes)")
 
-    footer = """-- 注册所有 ROM 数据
-function addon:RegisterAllROMData()
-    for filename, data in pairs(WOWFC_ROM_DATA) do
-        if addon.RegisterROMData then
-            addon:RegisterROMData(filename, data)
-        end
-    end
-end
-
--- 初始化时自动注册
-addon:RegisterAllROMData()
+    footer = """-- 数据已全部加载到 _G.WOWFC_ROM_DATA。
+-- 游戏内直接通过 _G.WOWFC_ROM_DATA[filename] 取用（见 WOWFC.lua:ReadROMFile）。
 """
 
     # 写入输出文件
