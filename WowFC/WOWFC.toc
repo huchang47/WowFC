@@ -19,7 +19,6 @@ Core\PPU.lua
 Core\APU.lua
 Core\ROM.lua
 Core\Controller.lua
-Core\APU.lua
 Core\FC.lua
 
 # Mappers
