@@ -6,10 +6,13 @@ ROM 转换工具
 
 使用方法:
     python convert_roms.py
+    python convert_roms.py --roms-dir "C:\\MyROMs" --output "C:\\Output\\ROMData.lua"
 """
 
 import os
 import sys
+import argparse
+
 
 def read_rom_file(filepath):
     """读取 ROM 文件并返回字节列表"""
@@ -20,6 +23,7 @@ def read_rom_file(filepath):
     except Exception as e:
         print(f"错误: 无法读取文件 {filepath}: {e}")
         return None
+
 
 def bytes_to_lua_code(filename, bytes_data):
     """将字节数据转换为 Lua 代码"""
@@ -43,6 +47,7 @@ def bytes_to_lua_code(filename, bytes_data):
     lines.append("")
 
     return "\n".join(lines)
+
 
 def generate_rom_data_file(roms_dir, output_file):
     """生成 ROM 数据 Lua 文件"""
@@ -105,6 +110,16 @@ addon:RegisterAllROMData()
     # 写入输出文件
     full_content = header + "\n".join(body_parts) + footer
 
+    # 确保输出目录存在
+    output_dir = os.path.dirname(output_file)
+    if output_dir and not os.path.exists(output_dir):
+        try:
+            os.makedirs(output_dir)
+            print(f"创建目录: {output_dir}")
+        except Exception as e:
+            print(f"错误: 无法创建目录 {output_dir}: {e}")
+            return False
+
     try:
         with open(output_file, 'w', encoding='utf-8') as f:
             f.write(full_content)
@@ -115,13 +130,40 @@ addon:RegisterAllROMData()
         print(f"错误: 无法写入文件 {output_file}: {e}")
         return False
 
+
+def get_script_dir():
+    """获取脚本/exe 所在目录（兼容 PyInstaller 打包）"""
+    if getattr(sys, 'frozen', False):
+        # PyInstaller 打包后的 exe
+        return os.path.dirname(sys.executable)
+    else:
+        # 普通 Python 脚本
+        return os.path.dirname(os.path.abspath(__file__))
+
+
 def main():
-    # 获取脚本所在目录
-    script_dir = os.path.dirname(os.path.abspath(__file__))
+    parser = argparse.ArgumentParser(
+        description="将 .nes ROM 文件转换为 WoW 插件可用的 Lua 数据文件"
+    )
+    parser.add_argument(
+        "--roms-dir", "-r",
+        default=None,
+        help="ROMs 目录路径 (默认: 工具所在目录的 ../ROMs)"
+    )
+    parser.add_argument(
+        "--output", "-o",
+        default=None,
+        help="输出 Lua 文件路径 (默认: 工具所在目录的 ../Utils/ROMData_Generated.lua)"
+    )
+
+    args = parser.parse_args()
+
+    # 获取脚本/exe 所在目录
+    script_dir = get_script_dir()
 
     # 路径配置
-    roms_dir = os.path.join(script_dir, '..', 'ROMs')
-    output_file = os.path.join(script_dir, '..', 'Utils', 'ROMData_Generated.lua')
+    roms_dir = args.roms_dir or os.path.join(script_dir, '..', 'ROMs')
+    output_file = args.output or os.path.join(script_dir, '..', 'Utils', 'ROMData_Generated.lua')
 
     # 转换为绝对路径
     roms_dir = os.path.abspath(roms_dir)
@@ -145,6 +187,7 @@ def main():
     else:
         print("转换失败!")
         sys.exit(1)
+
 
 if __name__ == "__main__":
     main()
