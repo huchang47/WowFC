@@ -33,6 +33,7 @@ function FC:new(opts)
     fc.ppu = PPU:new(fc)
     fc.apu = APU:new(fc)
     fc.controller = Controller:new(fc)
+    fc.apu = APU:new(fc)
 
     -- ROM 和 Mapper
     fc.rom = nil
@@ -79,6 +80,7 @@ function FC:reset()
     self.ppu:reset()
     self.apu:reset()
     self.controller:reset()
+    self.apu:reset()
 
     if self.mmap then
         self.mmap:reset()
@@ -461,6 +463,10 @@ function FC:frame()
                     frameCompleted = true
 
                     prof.frames = prof.frames + 1
+
+                    -- 每个 NES 帧驱动一次音频采样,不依赖渲染 present(需求 5.4)。
+                    -- 放在帧跳过 if 之外,保证帧跳过开启时音频仍按 NES 时间线工作。
+                    self.apu:tick()
 
                     -- 完成一帧就退出循环
                     break
