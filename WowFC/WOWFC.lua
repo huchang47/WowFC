@@ -58,6 +58,11 @@ function addon:OnInitialize()
     -- 加载持久化按键映射(SavedVariables WOWFCDB.keybindings)
     KB:Load()
 
+    -- 初始化声音总开关持久化(SavedVariables WOWFCDB.soundEnabled),默认开启。
+    -- ADDON_LOADED 时 SavedVariables 已可读;此处规范化默认值,供新建 FC 实例回填。
+    WOWFCDB = WOWFCDB or {}
+    if WOWFCDB.soundEnabled == nil then WOWFCDB.soundEnabled = true end
+
     -- 创建主窗口
     self:CreateMainFrame()
 
@@ -111,6 +116,25 @@ function addon:OnInitialize()
             else
                 print(string.format("|cffff8800WOWFC|r: 逐扫描线 = %s。用法 /fc scanline <on|off>",
                     nes:getScanlineMode() and "on" or "off"))
+            end
+        elseif msg:match("^sound") then
+            -- 声音总开关:/fc sound on|off,委托 APU:setEnabled
+            local rest = msg:match("^sound%s+(%S+)$")
+            if not nes then
+                print("|cffff0000WOWFC|r: 未加载ROM")
+            elseif rest == "on" then
+                WOWFCDB = WOWFCDB or {}
+                WOWFCDB.soundEnabled = true
+                nes.apu:setEnabled(true)
+                print("|cff00ff00WOWFC|r: 声音已|cff00ff00开启|r")
+            elseif rest == "off" then
+                WOWFCDB = WOWFCDB or {}
+                WOWFCDB.soundEnabled = false
+                nes.apu:setEnabled(false)
+                print("|cff00ff00WOWFC|r: 声音已|cffff0000关闭|r")
+            else
+                print(string.format("|cffff8800WOWFC|r: 声音 = %s。用法 /fc sound <on|off>",
+                    nes.apu:isEnabled() and "on" or "off"))
             end
         elseif msg == "boost" then
             WOWFCDB = WOWFCDB or {}
@@ -482,6 +506,11 @@ function addon:LoadROMFromFile(filename)
                 MainFrame.statusText:SetText(status)
             end
         })
+
+        -- 回填持久化的声音开关到新建实例的 APU,使重载后保留上次设置。
+        WOWFCDB = WOWFCDB or {}
+        if WOWFCDB.soundEnabled == nil then WOWFCDB.soundEnabled = true end
+        nes.apu:setEnabled(WOWFCDB.soundEnabled)
     end
 
     -- 读取 ROM 文件
@@ -801,6 +830,7 @@ function addon:ShowHelp()
     print("  |cffffff00/fc skip <N>|r  帧跳过(1=关,2-10=每 N 帧渲染一帧;或 |cffffff00auto|r 自动)")
     print("  |cffffff00/fc prof|r       性能数据  |cffffff00/fc profreset|r 清零")
     print("  |cffffff00/fc boost|r      开关性能增强(运行时解除 WoW 帧率上限)")
+    print("  |cffffff00/fc sound <on|off>|r 开关声音(APU 音高近似发声)")
     print("  |cffffff00/fc debug|r      运行时状态")
 end
 

@@ -11,12 +11,14 @@
 Utils\BitOps.lua
 Utils\Buffer.lua
 Utils\ROMData_Generated.lua
+Utils\APUToneMap_Generated.lua
 
 # Core
 Core\CPU.lua
 Core\PPU.lua
 Core\ROM.lua
 Core\Controller.lua
+Core\APU.lua
 Core\FC.lua
 
 # Mappers
