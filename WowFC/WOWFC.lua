@@ -320,16 +320,12 @@ function addon:ToggleFrame()
     if MainFrame:IsShown() then
         MainFrame:Hide()
         self:StopGameLoop()
-        -- 关窗时恢复 WoW 系统
-        self:RestoreWoWSystems()
         -- 关窗时一并关掉操控,避免独占键盘后忘了切回 WoW
         if self._applyControlMode and self._controlMode then
             self._applyControlMode(false)
         end
     else
         MainFrame:Show()
-        -- 开窗时自动 Turbo: 静音 WoW 音频 + 隐藏名条
-        self:SuspendWoWSystems()
     end
 end
 
@@ -614,9 +610,6 @@ function addon:StartGameLoop()
     -- maxfps/maxfpsbk 是非保护 CVar,插件可改。关闭模拟器时恢复。
     self:ApplyPerfCVars(true)
 
-    -- Turbo 模式: 静音 WoW 音频 + 隐藏名条,释放资源给 FC 模拟器
-    self:SuspendWoWSystems()
-
     if not self._driver then
         self._driver = CreateFrame("Frame", nil, UIParent)
     end
@@ -667,9 +660,6 @@ function addon:StopGameLoop()
     end
     -- 恢复 WoW 帧率设置
     self:ApplyPerfCVars(false)
-
-    -- 恢复 WoW 音频 + 名条
-    self:RestoreWoWSystems()
 end
 
 -- 打开模拟器时解除帧率上限,关闭时恢复。
@@ -710,59 +700,6 @@ function addon:ApplyPerfCVars(enable)
         end
         self._savedCVars = nil
     end
-end
-
--- ============================================================================
--- 自动优化: 打开窗口时隐藏名条 + 静音非模拟器音频通道
--- FC 模拟器使用 Master(pulse1) / SFX(pulse2) / Music(triangle),不动
--- 仅静音 Ambience(环境音) 和 Dialog(对话),不影响模拟器声音
--- ============================================================================
-function addon:SuspendWoWSystems()
-    if not self._savedWoWState then
-        self._savedWoWState = {}
-
-        -- 音频: 仅静音模拟器未使用的通道 (Ambience/Dialog)
-        if GetCVar then
-            self._savedWoWState.ambienceVolume = GetCVar("Sound_AmbienceVolume")
-            self._savedWoWState.dialogVolume   = GetCVar("Sound_DialogVolume")
-        end
-        if SetCVar then
-            SetCVar("Sound_AmbienceVolume", "0")
-            SetCVar("Sound_DialogVolume", "0")
-        end
-
-        -- 名条: 保存并隐藏
-        if GetCVar then
-            self._savedWoWState.nameplateAll  = GetCVar("nameplateShowAll")
-            self._savedWoWState.nameplateEnemy  = GetCVar("nameplateShowEnemies")
-            self._savedWoWState.nameplateFriend = GetCVar("nameplateShowFriends")
-        end
-        if SetCVar then
-            SetCVar("nameplateShowAll", "0")
-            SetCVar("nameplateShowEnemies", "0")
-            SetCVar("nameplateShowFriends", "0")
-        end
-    end
-end
-
--- 恢复 WoW 系统
-function addon:RestoreWoWSystems()
-    if not self._savedWoWState then return end
-
-    -- 音频恢复
-    if SetCVar and self._savedWoWState.ambienceVolume then
-        SetCVar("Sound_AmbienceVolume", self._savedWoWState.ambienceVolume)
-        SetCVar("Sound_DialogVolume", self._savedWoWState.dialogVolume)
-    end
-
-    -- 名条恢复
-    if SetCVar and self._savedWoWState.nameplateAll then
-        SetCVar("nameplateShowAll", self._savedWoWState.nameplateAll)
-        SetCVar("nameplateShowEnemies", self._savedWoWState.nameplateEnemy)
-        SetCVar("nameplateShowFriends", self._savedWoWState.nameplateFriend)
-    end
-
-    self._savedWoWState = nil
 end
 
 -- 重置
@@ -893,7 +830,6 @@ function addon:ShowHelp()
     print("  |cffffff00/fc skip <N>|r  帧跳过(1=关,2-10=每 N 帧渲染一帧;或 |cffffff00auto|r 自动)")
     print("  |cffffff00/fc prof|r       性能数据  |cffffff00/fc profreset|r 清零")
     print("  |cffffff00/fc boost|r      开关性能增强(运行时解除 WoW 帧率上限)")
-    print("  |cffffd700自动优化|r 打开窗口时自动静音环境/对话 + 隐藏名条,关闭时恢复")
     print("  |cffffff00/fc sound <on|off>|r 开关声音(预录制音色文件对位播放)")
     print("  |cffffff00/fc debug|r      运行时状态")
 end
@@ -909,8 +845,6 @@ frame:SetScript("OnEvent", function(self, event, arg1)
         -- 保险:登出 / 重载前恢复帧率 CVar,
         -- 避免 maxfps=0 被持久化到 WoW 设置,影响下次进游戏
         addon:ApplyPerfCVars(false)
-        -- 恢复 WoW 音频 + 名条
-        addon:RestoreWoWSystems()
     end
 end)
 

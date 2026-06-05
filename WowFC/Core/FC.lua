@@ -1,4 +1,4 @@
--- FC.lua
+﻿-- FC.lua
 -- 主 FC 模拟器类
 -- 基于 JSNES 的 nes.js 移植
 
@@ -149,19 +149,17 @@ function FC:memoryMapperWrite(address, value)
     elseif address == 0x4014 then
         self:doOAMDMA(value)
 
-    elseif address == 0x4015 then
-        self.apu:write(0x15, value)
-
     elseif address == 0x4016 then
         self.controller:strobe(value)
 
     elseif address == 0x4017 then
-        -- $4017: APU 帧计数器 (bit6-7) + 控制器2 选通 (bit0-2)
-        self.apu:write(0x17, value)
+        -- 控制器 2（未实现）
+        -- APU 帧计数器（粗粒度处理）
+        self.apu:writeRegister(0x4017, value)
 
-    elseif address >= 0x4000 and address <= 0x4013 then
-        -- APU 寄存器 ($4000-$4013)
-        self.apu:write(band(address, 0x1F), value)
+    elseif address >= 0x4000 and address < 0x4018 then
+        -- APU 寄存器（$4000-$4013 / $4015）
+        self.apu:writeRegister(address, value)
 
     elseif address >= 0x6000 and address < 0x8000 then
         -- PRG RAM（如果存在）
@@ -190,7 +188,8 @@ function FC:memoryMapperLoad(address)
         return self.ppu:read(0x2000 + band(address, 7))
 
     elseif address == 0x4015 then
-        return self.apu:read(0x15)
+        -- APU 状态
+        return self.apu:readStatus()
 
     elseif address == 0x4016 then
         return self.controller:read(1)
@@ -198,9 +197,9 @@ function FC:memoryMapperLoad(address)
     elseif address == 0x4017 then
         return self.controller:read(2)
 
-    elseif address >= 0x4000 and address <= 0x4013 then
-        -- APU 寄存器读 ($4000-$4013)
-        return self.apu:read(band(address, 0x1F))
+    elseif address >= 0x4000 and address < 0x4018 then
+        -- APU 寄存器（未实现）
+        return 0
 
     elseif address >= 0x6000 and address < 0x8000 then
         -- PRG RAM
@@ -376,12 +375,6 @@ function FC:frame()
                 local dots = cycles * 3
                 ppu:advanceDots(dots)
 
-                -- 推进APU,检查 IRQ
-                self.apu:advanceCycles(cycles)
-                if self.apu:hasIRQ() then
-                    cpu:requestIrq(CPU.IRQ_NORMAL)
-                end
-
                 -- 优化:检测到 SMB1 EndlessLoop(JMP self),直接快进到帧结束。
                 -- SMB1 主线程在 ColdBoot 末尾 jmp 自己等待 NMI,所有游戏逻辑在 NMI handler。
                 -- 没这个优化,我们每帧浪费 1.5M+ JMP 指令(占总指令 70%)。
@@ -400,8 +393,6 @@ function FC:frame()
                             local consumed = math.ceil(toLineEnd / 3)
                             cpu._cpuCycleBase = cpu._cpuCycleBase + consumed
                             cycleCount = cycleCount + consumed
-                            -- APU 同步推进
-                            self.apu:advanceCycles(consumed)
                         end
                     else
                         local remaining = CYCLES_PER_FRAME - cycleCount
@@ -409,8 +400,6 @@ function FC:frame()
                             ppu:advanceDots(remaining * 3)
                             cycleCount = CYCLES_PER_FRAME
                             cpu._cpuCycleBase = cpu._cpuCycleBase + remaining
-                            -- APU 同步推进
-                            self.apu:advanceCycles(remaining)
                         end
                     end
                 end
@@ -462,8 +451,9 @@ function FC:frame()
 
                     prof.frames = prof.frames + 1
 
-                    -- 每帧批量播放一次音频 (节流 + 去重, 替代逐个 PlaySoundFile)
-                    self.apu:flushAudio()
+                    -- 每个 NES 帧驱动一次音频采样,不依赖渲染 present(需求 5.4)。
+                    -- 放在帧跳过 if 之外,保证帧跳过开启时音频仍按 NES 时间线工作。
+                    self.apu:tick()
 
                     -- 完成一帧就退出循环
                     break
@@ -473,11 +463,6 @@ function FC:frame()
                 local chunk = math.min(cpu.cyclesToHalt, 8)
                 for i = 1, chunk do
                     ppu:advanceDots(3)
-                end
-                -- APU 同步推进
-                self.apu:advanceCycles(chunk)
-                if self.apu:hasIRQ() then
-                    cpu:requestIrq(CPU.IRQ_NORMAL)
                 end
                 cpu.cyclesToHalt = cpu.cyclesToHalt - chunk
                 cpu._cpuCycleBase = cpu._cpuCycleBase + chunk
