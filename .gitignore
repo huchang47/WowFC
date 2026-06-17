@@ -1,32 +1,5 @@
-# 所有隐藏文件和目录
-.*
-
-# 备份文件
-*.bak
-*.old
-*.orig
-*.backup
-
-# 临时文件
-*.tmp
-*.temp
-*~
-
-# 日志文件
-*.log
-
-# WoW 相关
-# ROM 文件可能有版权问题，不应提交
-*.nes
-*.NES
-
-# 批处理文件（仅本地使用）
-*.bat
-
-# Node.js
-node_modules/
-
-# 构建输出
-dist/
-build/
-*.map
+.history/
+Utils/ROMData_Generated.lua
+tools/compat_mapper0.txt
+ROMs/
+.kiro/
