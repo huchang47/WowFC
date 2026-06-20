@@ -1,0 +1,39 @@
+name: Release WOWFC
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Package WOWFC
+        run: |
+          mkdir -p WOWFC
+          # 复制根目录插件文件
+          cp *.lua *.toc *.tga WOWFC/
+          # 复制 .bat 脚本（如果存在）
+          cp *.bat WOWFC/ 2>/dev/null || true
+          # 复制核心目录
+          cp -r Core Utils Sound ROMs WOWFC/
+          # 复制 tools 源码，排除 build 产物和 exe
+          mkdir -p WOWFC/tools
+          cp tools/*.py tools/*.spec WOWFC/tools/
+          cp -r tools/dev WOWFC/tools/
+          # 创建 zip
+          zip -r WOWFC.zip WOWFC/
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: WOWFC.zip
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
