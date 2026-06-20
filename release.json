@@ -1,0 +1,14 @@
+[
+  {
+    "name": "WowFC",
+    "version": "v1.1.1",
+    "filename": "WowFC-v1.1.1.zip",
+    "nolib": false,
+    "metadata": [
+      {
+        "flavor": "wow_retail",
+        "interface": 120007
+      }
+    ]
+  }
+]
