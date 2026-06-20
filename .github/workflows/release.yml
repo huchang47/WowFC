@@ -27,10 +27,29 @@ jobs:
 
     steps:
       - name: Clone Project
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
-          ref: ${{ inputs.tag || github.ref }}
           fetch-depth: 0
+
+      - name: Prepare manual release tag
+        if: ${{ github.event_name == 'workflow_dispatch' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          TAG="${{ inputs.tag }}"
+          git fetch --force --tags origin
+
+          if git rev-parse --verify --quiet "refs/tags/${TAG}" >/dev/null; then
+            git checkout --force "refs/tags/${TAG}"
+          else
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git tag "${TAG}"
+            git push origin "refs/tags/${TAG}"
+          fi
+
+          git describe --tags --exact-match
 
       - name: Package and Release
         uses: BigWigsMods/packager@v2
