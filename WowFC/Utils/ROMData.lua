@@ -5,7 +5,7 @@
 local addonName, addon = ...
 
 -- ROM 数据存储
-_G.WOWFC_ROM_DATA = {}
+_G.WowFC_ROM_DATA = {}
 
 -- 读取文件并转换为字节表
 function addon:FileToByteTable(filepath)
@@ -34,7 +34,7 @@ function addon:ByteTableToLuaCode(filename, bytes)
     end
 
     local code = string.format("-- Auto-generated ROM data for %s\n", filename)
-    code = code .. string.format("WOWFC_ROM_DATA[%q] = {\n", filename)
+    code = code .. string.format("WowFC_ROM_DATA[%q] = {\n", filename)
 
     -- 每行 16 个字节
     for i = 1, #bytes do
@@ -65,7 +65,7 @@ end
 
 -- 生成 ROM 数据文件（在 WoW 外部调用）
 function addon:GenerateROMDataFile(outputPath)
-    local romsDir = "Interface\\AddOns\\WOWFC\\ROMs\\"
+    local romsDir = "Interface\\AddOns\\WowFC\\ROMs\\"
     local romFiles = {
         "MARIO.NES",
     }
@@ -74,7 +74,7 @@ function addon:GenerateROMDataFile(outputPath)
     allCode = allCode .. "-- Do not edit manually\n\n"
     allCode = allCode .. "local _, addon = ...\n\n"
     allCode = allCode .. "-- ROM data storage\n"
-    allCode = allCode .. "_G.WOWFC_ROM_DATA = _G.WOWFC_ROM_DATA or {}\n\n"
+    allCode = allCode .. "_G.WowFC_ROM_DATA = _G.WowFC_ROM_DATA or {}\n\n"
 
     local hasData = false
 
@@ -98,7 +98,7 @@ function addon:GenerateROMDataFile(outputPath)
         -- 添加注册函数
         allCode = allCode .. "-- Register all ROM data\n"
         allCode = allCode .. "function addon:RegisterAllROMData()\n"
-        allCode = allCode .. "    for filename, data in pairs(WOWFC_ROM_DATA) do\n"
+        allCode = allCode .. "    for filename, data in pairs(WowFC_ROM_DATA) do\n"
         allCode = allCode .. "        self:RegisterROMData(filename, data)\n"
         allCode = allCode .. "    end\n"
         allCode = allCode .. "end\n"

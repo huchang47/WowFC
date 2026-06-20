@@ -1,15 +1,19 @@
-package-as: WOWFC
+package-as: WowFC
+
+move-folders:
+  WowFC/WowFC: WowFC
 
 ignore:
   - .github
   - .gitignore
   - .vscode
-  - WOWFC_ROM_Converter.exe
+  - README.md
+  - README.zh-CN.md
+  - WowFCLogo.png
   - release.json
-  - tools/build
-  - tools/dev
-  - tools/compat_mapper0.txt
   - screenshot.png
+  - Tools
+  - tools
 
 manual-changelog:
   filename: README.md

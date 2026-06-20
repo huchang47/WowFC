@@ -7,7 +7,7 @@
 使用方法：
 1. 从 https://romsfun.com/roms/nes/ 或其他来源下载 NES ROM 文件
 2. 将 .nes 文件复制到此目录
-3. 运行 Tools/convert_roms.py 将 ROM 转换为 Lua 数据格式
+3. 运行 ..\WowFC_ROM_Converter.exe 将 ROM 转换为 Lua 数据格式
 4. 在游戏内输入 /reload 重新加载插件
 5. 点击插件界面上的"加载ROM"按钮选择并加载游戏
 
@@ -20,7 +20,7 @@ Please place .nes format ROM files in this directory
 Instructions:
 1. Download NES ROM files from https://romsfun.com/roms/nes/ or other sources
 2. Copy .nes files to this directory
-3. Run Tools/convert_roms.py to convert ROMs to Lua data format
+3. Run ..\WowFC_ROM_Converter.exe to convert ROMs to Lua data format
 4. Type /reload in-game to reload the addon
 5. Click the "Load ROM" button in the addon interface to select and load a game
 

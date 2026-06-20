@@ -3,7 +3,7 @@
 -- 供 PaletteRenderer.lua 读取:NES 64 色调色板 + 调色板纹理元数据。
 -- 颜色与 Core/PPU.lua loadPalette() 同源。
 
-_G.WOWFC_PALETTE_DATA = {
+_G.WowFC_PALETTE_DATA = {
     texPath = "Interface\\AddOns\\WowFC\\PaletteTex.tga",
     texWidth = 256,
     texHeight = 4,

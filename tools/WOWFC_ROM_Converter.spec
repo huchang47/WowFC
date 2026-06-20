@@ -2,12 +2,16 @@
 
 import os
 import PyInstaller.config
-PyInstaller.config.CONF['distpath'] = os.path.dirname(os.path.abspath(SPECPATH))
+tools_dir = os.path.abspath('Tools')
+repo_dir = os.path.dirname(tools_dir)
+addon_dir = os.path.join(repo_dir, 'WowFC')
+PyInstaller.config.CONF['distpath'] = addon_dir
+PyInstaller.config.CONF['workpath'] = os.path.join(tools_dir, 'build')
 
 
 a = Analysis(
-    ['convert_roms.py'],
-    pathex=[],
+    [os.path.join(tools_dir, 'convert_roms.py')],
+    pathex=[tools_dir],
     binaries=[],
     datas=[],
     hiddenimports=[],
@@ -26,7 +30,7 @@ exe = EXE(
     a.binaries,
     a.datas,
     [],
-    name='WOWFC_ROM_Converter',
+    name='WowFC_ROM_Converter',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,

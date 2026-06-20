@@ -1,8 +1,9 @@
 .history/
-Utils/ROMData_Generated.lua
-tools/compat_mapper0.txt
-tools/build/
-tools/dev/
+build/
+Tools/compat_mapper0.txt
+Tools/build/
+Tools/dev/
+WowFC/ROMs/*.nes
 __pycache__/
 *.pyc
 .经典Rom/

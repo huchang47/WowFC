@@ -20,7 +20,7 @@
 -- 部分 CPU 时间。两个渲染器同等条件离屏,对比公平。
 
 local Bench = {}
-_G.WOWFC_Bench = Bench
+_G.WowFC_Bench = Bench
 
 local SCREEN_WIDTH = 256
 local SCREEN_HEIGHT = 240
@@ -47,7 +47,7 @@ function Bench:IsRecording()
     return self._recording
 end
 
--- 由 WOWFC.lua 的 OnFrame 在录制期间调用,抓一帧快照。
+-- 由 WowFC.lua 的 OnFrame 在录制期间调用,抓一帧快照。
 function Bench:Capture(buffer, ppu)
     if not self._recording then return end
     if not buffer then return end
@@ -81,7 +81,7 @@ function Bench:Capture(buffer, ppu)
 
     if #self._snaps >= self._wantFrames then
         self._recording = false
-        print(string.format("|cff00ff00WOWFC Bench|r: 已录制 %d 帧,开始离屏对比(分帧执行,稍候)...",
+        print(string.format("|cff00ff00WowFC Bench|r: 已录制 %d 帧,开始离屏对比(分帧执行,稍候)...",
             #self._snaps))
         self:_drive()
     end
@@ -90,14 +90,14 @@ end
 -- 开始录制。frames:录制帧数;repeats:每渲染器回放遍数。
 function Bench:Start(frames, repeats)
     if self._recording then
-        print("|cffff8800WOWFC Bench|r: 正在录制中,请稍候。")
+        print("|cffff8800WowFC Bench|r: 正在录制中,请稍候。")
         return
     end
     self._wantFrames = frames or 60
     self._repeats = repeats or 3
     self._snaps = {}
     self._recording = true
-    print(string.format("|cff00ff00WOWFC Bench|r: 录制 %d 帧真实画面中...(确保游戏正在运行/有画面变化)",
+    print(string.format("|cff00ff00WowFC Bench|r: 录制 %d 帧真实画面中...(确保游戏正在运行/有画面变化)",
         self._wantFrames))
 end
 
@@ -149,12 +149,12 @@ end
 function Bench:_runAll()
     local snaps = self._snaps
     if not snaps or #snaps == 0 then
-        print("|cffff0000WOWFC Bench|r: 没有录到帧,先 /fc bench 并让游戏跑起来。")
+        print("|cffff0000WowFC Bench|r: 没有录到帧,先 /fc bench 并让游戏跑起来。")
         return
     end
 
     -- 暂停游戏循环,避免与 bench 累计 CPU 触发 addon 执行配额上限
-    local addon = _G.WOWFC
+    local addon = _G.WowFC
     self._pausedGame = (addon and addon.PauseForBench and addon:PauseForBench()) or false
 
     if not self._holder then
@@ -166,14 +166,14 @@ function Bench:_runAll()
 
     -- 两个渲染器各 6 万多 texture,分到两帧创建,避免单帧超时
     if not self._ultra then
-        local f = _G.WOWFC_UltraRenderer
-        if not f then print("|cffff0000WOWFC Bench|r: UltraRenderer 未加载"); return end
+        local f = _G.WowFC_UltraRenderer
+        if not f then print("|cffff0000WowFC Bench|r: UltraRenderer 未加载"); return end
         self._ultra = f:Create(self._holder, { scale = 2, targetFps = 60 })
         coroutine.yield()
     end
     if not self._palette then
-        local f = _G.WOWFC_PaletteRenderer
-        if not f then print("|cffff0000WOWFC Bench|r: PaletteRenderer 未加载"); return end
+        local f = _G.WowFC_PaletteRenderer
+        if not f then print("|cffff0000WowFC Bench|r: PaletteRenderer 未加载"); return end
         self._palette = f:Create(self._holder, { scale = 2, targetFps = 60 })
         if not self._palette then return end  -- 缺调色板数据,Create 已自行提示
         coroutine.yield()
@@ -197,7 +197,7 @@ function Bench:_runAll()
         return string.format("%.2fx", a / b)
     end
 
-    print("|cff00ff00===== WOWFC 渲染器 A/B 基准 =====|r")
+    print("|cff00ff00===== WowFC 渲染器 A/B 基准 =====|r")
     print(string.format("录制帧: %d  回放: %d 遍  模式分布: skip=%d partial=%d full=%d",
         #snaps, rep, modeCount.skip, modeCount.partial, modeCount.full))
     print(string.format("steady 改色/帧: Ultra=%.0f  Palette=%.0f(应一致,验证视觉等价)",
@@ -223,7 +223,7 @@ function Bench:_drive()
     local function pump()
         local ok, err = coroutine.resume(co)
         if not ok then
-            print("|cffff0000WOWFC Bench|r: 运行出错: " .. tostring(err))
+            print("|cffff0000WowFC Bench|r: 运行出错: " .. tostring(err))
             self:_restoreGame()
             return
         end
@@ -240,7 +240,7 @@ end
 function Bench:_restoreGame()
     if self._pausedGame then
         self._pausedGame = false
-        local addon = _G.WOWFC
+        local addon = _G.WowFC
         if addon and addon.ResumeAfterBench then addon:ResumeAfterBench() end
     end
 end

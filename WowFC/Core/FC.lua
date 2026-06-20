@@ -1,4 +1,4 @@
-﻿-- FC.lua
+-- FC.lua
 -- 主 FC 模拟器类
 -- 基于 JSNES 的 nes.js 移植
 
@@ -59,7 +59,7 @@ function FC:new(opts)
     -- 由于 SMB1 PPU side effect(sprite 0 hit 等)由 _processNMI 直接管,
     -- 不依赖 renderFrame,所以跳过 renderFrame 不影响游戏逻辑。
     --
-    -- 默认 skipN=1 不跳、不 auto:OnUpdate driver(WOWFC.lua)已接管模拟速度,
+    -- 默认 skipN=1 不跳、不 auto:OnUpdate driver(WowFC.lua)已接管模拟速度,
     -- 每个 NES 帧都渲染,画面最顺。动态 auto 与 OnUpdate 叠加会导致渲染帧
     -- 被多跳一层,画面发顿。需要时玩家用 /fc skip <N> 手动开。
     fc._frameSkip = 1
@@ -299,12 +299,12 @@ end
 function FC:dumpProfile()
     local p = self._prof
     if not p or p.frames == 0 then
-        print("|cffff0000WOWFC|r: 无 profile 数据,先跑几秒再 /fc prof")
+        print("|cffff0000WowFC|r: 无 profile 数据,先跑几秒再 /fc prof")
         return
     end
     local n = p.frames
     local function avg(x) return x / n end
-    print(string.format("|cff00ff00=== WOWFC Profile (frames=%d, calls=%d) ===|r",
+    print(string.format("|cff00ff00=== WowFC Profile (frames=%d, calls=%d) ===|r",
         n, p.frame_calls))
     print(string.format("总 frame() 平均: %.2f ms/帧 (理论 60fps 上限 16.67 ms)",
         avg(p.ms_total)))
@@ -516,7 +516,7 @@ function FC:frame()
     if not ok then
         self.isRunning = false
         self._frameInProgress = false
-        print("|cffff0000WOWFC|r: 帧执行错误: " .. tostring(err))
+        print("|cffff0000WowFC|r: 帧执行错误: " .. tostring(err))
         return false
     end
 

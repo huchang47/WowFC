@@ -1,11 +1,12 @@
 ## Interface: 120007
-## Title: WOWFC
+## Title: WowFC
 ## Title-zhCN: 魔兽世界FC模拟器
 ## Notes: FC/NES Emulator for World of Warcraft
 ## Notes-zhCN: 小霸王其乐无穷啊
 ## Author: [黑科研]胡涂 / [黑科研]童
 ## Version: 1.1.1
-## SavedVariables: WOWFCDB
+## IconTexture: Interface\AddOns\WowFC\WowFCLogo.tga
+## SavedVariables: WowFCDB
 
 # Utils
 Utils\BitOps.lua
@@ -38,4 +39,4 @@ Bench.lua
 Keybinding.lua
 
 # Main
-WOWFC.lua
+WowFC.lua

@@ -1,11 +1,11 @@
--- WOWFC.lua
+-- WowFC.lua
 -- 魔兽世界 FC 模拟器插件主文件
 -- 使用渲染器模块输出画面
 
 local addonName, addon = ...
 
 -- 全局命名空间
-WOWFC = addon
+WowFC = addon
 
 -- 从 toc 读取版本号,避免代码里硬编码 vN.M 不同步
 local function getAddonVersion()
@@ -20,7 +20,7 @@ end
 local ADDON_VERSION = getAddonVersion()
 
 -- 兼容旧命名和当前的 UltraRenderer 导出
-local RendererFactory = _G.WOWFC_TileRenderer or _G.WOWFC_UltraRenderer
+local RendererFactory = _G.WowFC_TileRenderer or _G.WowFC_UltraRenderer
 
 -- 常量
 local SCREEN_WIDTH = 256
@@ -47,54 +47,54 @@ local frameTimer = nil
 --   M:ClockTurbo() → (aState, bState) for FC frame loop
 --   M:Show() 弹出改键浮窗
 --   M:IsRecording() 是否在录键中(录键时 FC 不接收输入)
-local KB = WOWFC_Keybinding
+local KB = WowFC_Keybinding
 
 -- 初始化
 function addon:OnInitialize()
-    print(string.format("|cff00ff00WOWFC|r v%s |cff888888— 魔兽世界里的 FC 模拟器|r",
+    print(string.format("|cff00ff00WowFC|r v%s |cff888888— 魔兽世界里的 FC 模拟器|r",
         ADDON_VERSION))
     print("|cff888888输入 |r|cffffff00/fc|r|cff888888 打开/关闭。键盘按 |r|cffffff00ESC|r|cff888888 退出操控模式。|r")
 
-    -- 加载持久化按键映射(SavedVariables WOWFCDB.keybindings)
+    -- 加载持久化按键映射(SavedVariables WowFCDB.keybindings)
     KB:Load()
 
-    -- 初始化声音总开关持久化(SavedVariables WOWFCDB.soundEnabled),默认开启。
+    -- 初始化声音总开关持久化(SavedVariables WowFCDB.soundEnabled),默认开启。
     -- ADDON_LOADED 时 SavedVariables 已可读;此处规范化默认值,供新建 FC 实例回填。
-    WOWFCDB = WOWFCDB or {}
-    if WOWFCDB.soundEnabled == nil then WOWFCDB.soundEnabled = true end
+    WowFCDB = WowFCDB or {}
+    if WowFCDB.soundEnabled == nil then WowFCDB.soundEnabled = true end
 
     -- 创建主窗口
     self:CreateMainFrame()
 
     -- 注册斜杠命令
-    SLASH_WOWFC1 = "/fc"
-    SLASH_WOWFC2 = "/wfc"
-    SLASH_WOWFC3 = "/wowfc"
-    SlashCmdList["WOWFC"] = function(msg)
+    SLASH_WowFC1 = "/fc"
+    SLASH_WowFC2 = "/wfc"
+    SLASH_WowFC3 = "/wowfc"
+    SlashCmdList["WowFC"] = function(msg)
         msg = (msg or ""):lower():gsub("^%s+", ""):gsub("%s+$", "")
         if msg == "prof" then
-            if nes then nes:dumpProfile() else print("|cffff0000WOWFC|r: 未加载ROM") end
+            if nes then nes:dumpProfile() else print("|cffff0000WowFC|r: 未加载ROM") end
         elseif msg == "profreset" then
-            if nes then nes:resetProfile() print("|cff00ff00WOWFC|r: profile 已清零") end
+            if nes then nes:resetProfile() print("|cff00ff00WowFC|r: profile 已清零") end
         elseif msg:match("^skip%s") or msg == "skip" then
             local rest = msg:match("^skip%s+(.+)$")
             if not nes then
-                print("|cffff0000WOWFC|r: 未加载ROM")
+                print("|cffff0000WowFC|r: 未加载ROM")
             elseif rest == "auto" then
                 nes:setFrameSkip("auto")
-                print("|cff00ff00WOWFC|r: 帧跳过 = auto (动态调节)")
+                print("|cff00ff00WowFC|r: 帧跳过 = auto (动态调节)")
             elseif rest and tonumber(rest) then
                 local applied = nes:setFrameSkip(tonumber(rest))
                 if applied == 1 then
-                    print("|cff00ff00WOWFC|r: 帧跳过 = 1 (每帧渲染,目标 60fps)")
+                    print("|cff00ff00WowFC|r: 帧跳过 = 1 (每帧渲染,目标 60fps)")
                 else
                     print(string.format(
-                        "|cff00ff00WOWFC|r: 帧跳过 skipN=%d (UI 约 %.0f fps,关闭 auto)",
+                        "|cff00ff00WowFC|r: 帧跳过 skipN=%d (UI 约 %.0f fps,关闭 auto)",
                         applied, 60 / applied))
                 end
             else
                 local mode = nes._frameSkipAuto and "auto" or "manual"
-                print(string.format("|cffff8800WOWFC|r: 当前 skipN=%d (%s)。用法 /fc skip <1-10|auto>",
+                print(string.format("|cffff8800WowFC|r: 当前 skipN=%d (%s)。用法 /fc skip <1-10|auto>",
                     nes._frameSkip or 1, mode))
             end
         elseif msg == "debug" then
@@ -103,60 +103,60 @@ function addon:OnInitialize()
             -- 渲染器 A/B 基准:对比 UltraRenderer(SetColorTexture)与
             -- PaletteRenderer(SetTexCoord)在真实帧上的 Present 耗时。
             -- 用法 /fc bench [帧数] [回放遍数],默认 60 帧 × 10 遍。
-            if not _G.WOWFC_Bench then
-                print("|cffff0000WOWFC|r: Bench 模块未加载")
+            if not _G.WowFC_Bench then
+                print("|cffff0000WowFC|r: Bench 模块未加载")
             elseif not isRunning or not nes then
-                print("|cffff8800WOWFC|r: 请先加载并运行 ROM(基准需要真实运行画面)")
+                print("|cffff8800WowFC|r: 请先加载并运行 ROM(基准需要真实运行画面)")
             else
                 local f, r = msg:match("^bench%s+(%d+)%s+(%d+)$")
                 if not f then f = msg:match("^bench%s+(%d+)$") end
-                _G.WOWFC_Bench:Start(tonumber(f) or 60, tonumber(r) or 3)
+                _G.WowFC_Bench:Start(tonumber(f) or 60, tonumber(r) or 3)
             end
         elseif msg:match("^scanline") then
             local rest = msg:match("^scanline%s+(%S+)$")
             if not nes then
-                print("|cffff0000WOWFC|r: 未加载ROM")
+                print("|cffff0000WowFC|r: 未加载ROM")
             elseif rest == "on" then
                 local r = nes:setScanlineMode(true)
                 if r then
-                    print("|cff00ff00WOWFC|r: 逐扫描线渲染已|cff00ff00开启|r(支持 mid-frame 分屏/sprite0-hit,约 2x 开销)")
+                    print("|cff00ff00WowFC|r: 逐扫描线渲染已|cff00ff00开启|r(支持 mid-frame 分屏/sprite0-hit,约 2x 开销)")
                 else
-                    print("|cffff8800WOWFC|r: 当前为 SMB1 专用路径,逐扫描线开关无效")
+                    print("|cffff8800WowFC|r: 当前为 SMB1 专用路径,逐扫描线开关无效")
                 end
             elseif rest == "off" then
                 nes:setScanlineMode(false)
-                print("|cff00ff00WOWFC|r: 逐扫描线渲染已|cffff0000关闭|r(vblank 整帧快照,性能最优)")
+                print("|cff00ff00WowFC|r: 逐扫描线渲染已|cffff0000关闭|r(vblank 整帧快照,性能最优)")
             else
-                print(string.format("|cffff8800WOWFC|r: 逐扫描线 = %s。用法 /fc scanline <on|off>",
+                print(string.format("|cffff8800WowFC|r: 逐扫描线 = %s。用法 /fc scanline <on|off>",
                     nes:getScanlineMode() and "on" or "off"))
             end
         elseif msg:match("^sound") then
             -- 声音总开关:/fc sound on|off,委托 APU:setEnabled
             local rest = msg:match("^sound%s+(%S+)$")
             if not nes then
-                print("|cffff0000WOWFC|r: 未加载ROM")
+                print("|cffff0000WowFC|r: 未加载ROM")
             elseif rest == "on" then
-                WOWFCDB = WOWFCDB or {}
-                WOWFCDB.soundEnabled = true
+                WowFCDB = WowFCDB or {}
+                WowFCDB.soundEnabled = true
                 nes.apu:setEnabled(true)
-                print("|cff00ff00WOWFC|r: 声音已|cff00ff00开启|r")
+                print("|cff00ff00WowFC|r: 声音已|cff00ff00开启|r")
             elseif rest == "off" then
-                WOWFCDB = WOWFCDB or {}
-                WOWFCDB.soundEnabled = false
+                WowFCDB = WowFCDB or {}
+                WowFCDB.soundEnabled = false
                 nes.apu:setEnabled(false)
-                print("|cff00ff00WOWFC|r: 声音已|cffff0000关闭|r")
+                print("|cff00ff00WowFC|r: 声音已|cffff0000关闭|r")
             else
-                print(string.format("|cffff8800WOWFC|r: 声音 = %s。用法 /fc sound <on|off>",
+                print(string.format("|cffff8800WowFC|r: 声音 = %s。用法 /fc sound <on|off>",
                     nes.apu:isEnabled() and "on" or "off"))
             end
         elseif msg == "boost" then
-            WOWFCDB = WOWFCDB or {}
-            WOWFCDB.boostDisabled = not WOWFCDB.boostDisabled
-            if WOWFCDB.boostDisabled then
+            WowFCDB = WowFCDB or {}
+            WowFCDB.boostDisabled = not WowFCDB.boostDisabled
+            if WowFCDB.boostDisabled then
                 self:ApplyPerfCVars(false)
-                print("|cff00ff00WOWFC|r: 性能增强已|cffff0000关闭|r(不再解除 WoW 帧率上限)")
+                print("|cff00ff00WowFC|r: 性能增强已|cffff0000关闭|r(不再解除 WoW 帧率上限)")
             else
-                print("|cff00ff00WOWFC|r: 性能增强已|cff00ff00开启|r(模拟器运行时解除 WoW 帧率上限)")
+                print("|cff00ff00WowFC|r: 性能增强已|cff00ff00开启|r(模拟器运行时解除 WoW 帧率上限)")
                 if isRunning then self:ApplyPerfCVars(true) end
             end
         elseif msg == "help" then
@@ -170,7 +170,7 @@ end
 -- 创建主窗口
 function addon:CreateMainFrame()
     -- 主框架
-    MainFrame = CreateFrame("Frame", "WOWFCMainFrame", UIParent, "BasicFrameTemplateWithInset")
+    MainFrame = CreateFrame("Frame", "WowFCMainFrame", UIParent, "BasicFrameTemplateWithInset")
     MainFrame:SetSize(SCREEN_WIDTH * SCALE + 40, SCREEN_HEIGHT * SCALE + 120)
     MainFrame:SetPoint("CENTER")
     MainFrame:SetMovable(true)
@@ -185,7 +185,7 @@ function addon:CreateMainFrame()
     MainFrame.TitleBg:SetHeight(30)
     MainFrame.title = MainFrame:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
     MainFrame.title:SetPoint("TOP", MainFrame.TitleBg, "TOP", 0, -8)
-    MainFrame.title:SetText("WOWFC v" .. ADDON_VERSION .. " - FC 模拟器")
+    MainFrame.title:SetText("WowFC v" .. ADDON_VERSION .. " - FC 模拟器")
 
     -- 状态文本
     MainFrame.statusText = MainFrame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
@@ -216,7 +216,7 @@ function addon:CreateMainFrame()
     else
         renderer = nil
         MainFrame.statusText:SetText("渲染器加载失败")
-        print("|cffff0000WOWFC|r: 未找到渲染器模块，请检查 UltraRenderer.lua 是否已加载")
+        print("|cffff0000WowFC|r: 未找到渲染器模块，请检查 UltraRenderer.lua 是否已加载")
     end
 
     -- 按钮区域
@@ -350,15 +350,15 @@ function addon:ScanROMs()
     ROM_LIST = {}
     
     -- 从预加载数据中查找
-    if _G.WOWFC_ROM_DATA then
-        for filename, _ in pairs(_G.WOWFC_ROM_DATA) do
+    if _G.WowFC_ROM_DATA then
+        for filename, _ in pairs(_G.WowFC_ROM_DATA) do
             table.insert(ROM_LIST, filename)
         end
     end
     
     -- 从SavedVariables查找
-    if WOWFCDB and WOWFCDB.roms then
-        for filename, _ in pairs(WOWFCDB.roms) do
+    if WowFCDB and WowFCDB.roms then
+        for filename, _ in pairs(WowFCDB.roms) do
             local found = false
             for _, existing in ipairs(ROM_LIST) do
                 if existing == filename then
@@ -387,7 +387,7 @@ function addon:ShowROMLoader()
     self:ScanROMs()
 
     if #ROM_LIST == 0 then
-        print("|cffff8800WOWFC|r: 没有找到任何 ROM。请把 .nes 文件放进 |cffffff00WowFC/ROMs|r 目录,跑一下转换工具,然后 /reload 即可看到游戏列表。")
+        print("|cffff8800WowFC|r: 没有找到任何 ROM。请把 .nes 文件放进 |cffffff00WowFC/ROMs|r 目录,跑一下转换工具,然后 /reload 即可看到游戏列表。")
         return
     end
 
@@ -412,7 +412,7 @@ function addon:ShowROMLoader()
     local FRAME_H = 420         -- 固定高度,内容超出则滚动
 
     -- 创建选择器
-    ROMSelectorFrame = CreateFrame("Frame", "WOWFCROMSelector", UIParent, "BasicFrameTemplateWithInset")
+    ROMSelectorFrame = CreateFrame("Frame", "WowFCROMSelector", UIParent, "BasicFrameTemplateWithInset")
     ROMSelectorFrame:SetSize(FRAME_W, FRAME_H)
     ROMSelectorFrame:SetPoint("CENTER")
     ROMSelectorFrame:SetMovable(true)
@@ -524,9 +524,9 @@ function addon:LoadROMFromFile(filename)
         })
 
         -- 回填持久化的声音开关到新建实例的 APU,使重载后保留上次设置。
-        WOWFCDB = WOWFCDB or {}
-        if WOWFCDB.soundEnabled == nil then WOWFCDB.soundEnabled = true end
-        nes.apu:setEnabled(WOWFCDB.soundEnabled)
+        WowFCDB = WowFCDB or {}
+        if WowFCDB.soundEnabled == nil then WowFCDB.soundEnabled = true end
+        nes.apu:setEnabled(WowFCDB.soundEnabled)
     end
 
     -- 读取 ROM 文件
@@ -534,7 +534,7 @@ function addon:LoadROMFromFile(filename)
 
     if not romData then
         MainFrame.statusText:SetText("ROM 文件读取失败: " .. filename)
-        print("|cffff0000WOWFC|r: 无法读取 " .. filename .. ",请确认文件存在于 ROMs 目录")
+        print("|cffff0000WowFC|r: 无法读取 " .. filename .. ",请确认文件存在于 ROMs 目录")
         return
     end
 
@@ -545,7 +545,7 @@ function addon:LoadROMFromFile(filename)
 
     if success and err then
         MainFrame.statusText:SetText("已加载: " .. filename)
-        print("|cff00ff00WOWFC|r: 已加载 " .. filename .. ",祝玩得开心!")
+        print("|cff00ff00WowFC|r: 已加载 " .. filename .. ",祝玩得开心!")
 
         isRunning = true
         MainFrame.pauseBtn:SetText("暂停")
@@ -558,15 +558,15 @@ function addon:LoadROMFromFile(filename)
         end
     else
         MainFrame.statusText:SetText("ROM 加载失败")
-        print("|cffff0000WOWFC|r: ROM 加载失败: " .. tostring(err))
+        print("|cffff0000WowFC|r: ROM 加载失败: " .. tostring(err))
     end
 end
 
 -- 读取 ROM 文件
 function addon:ReadROMFile(filename)
     -- 优先使用预加载数据(addon 自带 ROM)
-    if _G.WOWFC_ROM_DATA and _G.WOWFC_ROM_DATA[filename] then
-        local data = _G.WOWFC_ROM_DATA[filename]
+    if _G.WowFC_ROM_DATA and _G.WowFC_ROM_DATA[filename] then
+        local data = _G.WowFC_ROM_DATA[filename]
         local copy = {}
         for k, v in pairs(data) do
             copy[k] = v
@@ -575,8 +575,8 @@ function addon:ReadROMFile(filename)
     end
 
     -- 否则从 SavedVariables 读(玩家自己导入的)
-    if WOWFCDB and WOWFCDB.roms and WOWFCDB.roms[filename] then
-        return WOWFCDB.roms[filename]
+    if WowFCDB and WowFCDB.roms and WowFCDB.roms[filename] then
+        return WowFCDB.roms[filename]
     end
 
     return nil
@@ -598,7 +598,7 @@ end
 -- 开始/暂停
 function addon:TogglePause()
     if not nes then
-        print("|cffff0000WOWFC|r: 请先加载ROM")
+        print("|cffff0000WowFC|r: 请先加载ROM")
         return
     end
 
@@ -670,7 +670,7 @@ function addon:StartGameLoop()
                 nes:frame()
             end)
             if not ok then
-                print("|cffff0000WOWFC|r: 运行错误: " .. tostring(err))
+                print("|cffff0000WowFC|r: 运行错误: " .. tostring(err))
                 isRunning = false
                 nes:stop()
                 MainFrame.pauseBtn:SetText("开始")
@@ -713,7 +713,7 @@ end
 -- 玩家可用 /fc boost 关闭此行为(有些机器不限帧会过热)。
 function addon:ApplyPerfCVars(enable)
     -- 玩家关掉了 boost → 不动 CVar
-    if WOWFCDB and WOWFCDB.boostDisabled then
+    if WowFCDB and WowFCDB.boostDisabled then
         -- 若之前已经改过,确保恢复
         if self._savedCVars and SetCVar then
             if self._savedCVars.maxfps then SetCVar("maxfps", self._savedCVars.maxfps) end
@@ -831,8 +831,8 @@ function addon:OnFrame(buffer, dirty_tiles)
     renderer.Render(renderer, buffer, dirty_tiles)
 
     -- 基准录制(仅在 /fc bench 录制期间有开销,平时一次表判断即返回)
-    if _G.WOWFC_Bench and _G.WOWFC_Bench:IsRecording() then
-        _G.WOWFC_Bench:Capture(buffer, dirty_tiles)
+    if _G.WowFC_Bench and _G.WowFC_Bench:IsRecording() then
+        _G.WowFC_Bench:Capture(buffer, dirty_tiles)
     end
 
     frameCount = frameCount + 1
@@ -841,11 +841,11 @@ end
 -- 显示调试信息
 function addon:ShowDebugInfo()
     if not nes then
-        print("|cffff0000WOWFC|r: 未加载ROM")
+        print("|cffff0000WowFC|r: 未加载ROM")
         return
     end
     
-    print("|cff00ff00=== WOWFC 调试信息 ===|r")
+    print("|cff00ff00=== WowFC 调试信息 ===|r")
     
     local dirtyCount = 0
     if nes.ppu and nes.ppu.dirty_tiles then
@@ -873,7 +873,7 @@ end
 
 -- 显示帮助
 function addon:ShowHelp()
-    print(string.format("|cff00ff00=== WOWFC v%s 帮助 ===|r", ADDON_VERSION))
+    print(string.format("|cff00ff00=== WowFC v%s 帮助 ===|r", ADDON_VERSION))
     print("|cffffd700【打开/关闭】|r |cffffff00/fc|r 切换主窗口")
     print("|cffffd700【操控模式】|r 点窗口下方 |cffffff00操控|r 按钮切换。开启时 FC 独占键盘,WoW 角色不响应。")
     print("                |cffffff00ESC|r 一键退出操控模式。加载 ROM 时自动开启。")
@@ -905,4 +905,4 @@ frame:SetScript("OnEvent", function(self, event, arg1)
 end)
 
 -- 导出
-_G["WOWFC"] = addon
+_G["WowFC"] = addon

@@ -1,4 +1,4 @@
-﻿# WowFC - World of Warcraft FC/NES Emulator
+# WowFC - World of Warcraft FC/NES Emulator
 
 A World of Warcraft addon that runs FC/NES games inside the game.
 
@@ -54,7 +54,7 @@ git clone https://github.com/huchang47/WowFC.git WowFC
 ### Loading Games
 
 1. Place your `.nes` format ROM files in the `WowFC/ROMs/` directory
-2. Run the conversion tool `tools/convert_roms.py` to convert ROMs to Lua data format
+2. Run `WowFC/WowFC_ROM_Converter.exe` to convert ROMs to Lua data format
 3. Run `/reload` in-game to load the new ROMs
 4. Click the "Load ROM" button in the addon interface to select and load a game
 
@@ -94,8 +94,8 @@ WowFC/
 ├── ROMs/           # ROM directory (README only in repo)
 ├── UltraRenderer.lua  # Renderer
 ├── Keybinding.lua  # Key binding
-├── WOWFC.lua       # Addon main entry
-└── WOWFC.toc       # Addon manifest
+├── WowFC.lua       # Addon main entry
+└── WowFC.toc       # Addon manifest
 ```
 
 ## Technical Notes

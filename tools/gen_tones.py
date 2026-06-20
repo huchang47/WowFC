@@ -6,7 +6,7 @@ APU 音色生成工具
 默认输出 .ogg 到 Sound/ 目录；若环境缺少音频编码器（ffmpeg / oggenc）则自动
 回退输出 .wav，并在映射表中记录实际格式。
 
-同时生成 Utils/APUToneMap_Generated.lua（运行时由 _G.WOWFC_APU_TONEMAP 读取），
+同时生成 Utils/APUToneMap_Generated.lua（运行时由 _G.WowFC_APU_TONEMAP 读取），
 供 APU 模块按"通道波形 + 音高"定位音色文件路径。
 
 使用方法:
@@ -163,9 +163,9 @@ def generate_tone_map_lua(output_file, fmt, low, high, files_by_kind):
     lines.append("-- 自动生成的 APU 音色映射表")
     lines.append("-- 请勿手动编辑（由 tools/gen_tones.py 生成）")
     lines.append("")
-    lines.append("-- 运行时由 _G.WOWFC_APU_TONEMAP 读取：")
+    lines.append("-- 运行时由 _G.WowFC_APU_TONEMAP 读取：")
     lines.append("--   按通道波形（pulse / triangle）+ MIDI 音高定位音色文件路径")
-    lines.append("_G.WOWFC_APU_TONEMAP = {")
+    lines.append("_G.WowFC_APU_TONEMAP = {")
     lines.append(f'    format = "{fmt}",')
     lines.append(f"    a4 = {A4_FREQ},")
     lines.append(f"    range = {{ low = {low}, high = {high} }},")
@@ -205,9 +205,10 @@ def main():
 
     # 路径推导（绝对路径），风格参考 convert_roms.py
     script_dir = os.path.dirname(os.path.abspath(__file__))
-    sound_dir = os.path.abspath(os.path.join(script_dir, "..", "Sound"))
+    addon_dir = os.path.abspath(os.path.join(script_dir, "..", "WowFC"))
+    sound_dir = os.path.abspath(os.path.join(addon_dir, "Sound"))
     map_file = os.path.abspath(
-        os.path.join(script_dir, "..", "Utils", "APUToneMap_Generated.lua"))
+        os.path.join(addon_dir, "Utils", "APUToneMap_Generated.lua"))
 
     low = note_name_to_midi(args.low)
     high = note_name_to_midi(args.high)
@@ -228,7 +229,7 @@ def main():
     expected_files = semitone_count * len(WAVEFORMS)
 
     print("=" * 60)
-    print("WOWFC APU 音色生成工具")
+    print("WowFC APU 音色生成工具")
     print("=" * 60)
     print(f"音域: {args.low}(MIDI {low}) .. {args.high}(MIDI {high}) "
           f"共 {semitone_count} 个半音")

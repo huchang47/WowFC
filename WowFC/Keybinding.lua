@@ -1,13 +1,13 @@
 -- Keybinding.lua
 -- 自定义按键映射模块。
 -- 数据结构、持久化、UI、连发逻辑都在这里。
--- WOWFC.lua 在 OnKeyDown/OnKeyUp/OnMouseDown/OnMouseUp 转发到这里。
+-- WowFC.lua 在 OnKeyDown/OnKeyUp/OnMouseDown/OnMouseUp 转发到这里。
 
 local _G = _G
 
--- 模块对象。由 WOWFC.lua 在初始化时取出来用。
-WOWFC_Keybinding = {}
-local M = WOWFC_Keybinding
+-- 模块对象。由 WowFC.lua 在初始化时取出来用。
+WowFC_Keybinding = {}
+local M = WowFC_Keybinding
 
 -- ============================================================
 -- 默认按键映射
@@ -82,11 +82,11 @@ local function cloneBindings(src)
 end
 
 -- ============================================================
--- 加载/保存(配合 SavedVariables WOWFCDB)
+-- 加载/保存(配合 SavedVariables WowFCDB)
 -- ============================================================
 function M:Load()
-    _G.WOWFCDB = _G.WOWFCDB or {}
-    local db = _G.WOWFCDB
+    _G.WowFCDB = _G.WowFCDB or {}
+    local db = _G.WowFCDB
 
     if db.keybindings then
         self.bindings = cloneBindings(db.keybindings)
@@ -104,9 +104,9 @@ function M:Load()
 end
 
 function M:Save()
-    _G.WOWFCDB = _G.WOWFCDB or {}
-    _G.WOWFCDB.keybindings = cloneBindings(self.bindings)
-    _G.WOWFCDB.turboBindings = cloneBindings(self.turboBindings)
+    _G.WowFCDB = _G.WowFCDB or {}
+    _G.WowFCDB.keybindings = cloneBindings(self.bindings)
+    _G.WowFCDB.turboBindings = cloneBindings(self.turboBindings)
 end
 
 function M:RebuildReverseMap()
@@ -201,7 +201,7 @@ end
 -- ============================================================
 -- 连发(turbo)
 -- ============================================================
--- 由 WOWFC.lua 在 OnKeyDown/OnMouseDown 时调用,设置连发槽 hold 状态
+-- 由 WowFC.lua 在 OnKeyDown/OnMouseDown 时调用,设置连发槽 hold 状态
 function M:SetTurboHeld(slot, held)
     self._turboHeld[slot] = held and true or false
 end
@@ -254,7 +254,7 @@ end
 function M:CreateUI()
     if KeybindingFrame then return KeybindingFrame end
 
-    local f = CreateFrame("Frame", "WOWFCKeybindingFrame", UIParent, "BasicFrameTemplateWithInset")
+    local f = CreateFrame("Frame", "WowFCKeybindingFrame", UIParent, "BasicFrameTemplateWithInset")
     f:SetSize(420, 460)
     f:SetPoint("CENTER")
     f:SetMovable(true)
@@ -268,7 +268,7 @@ function M:CreateUI()
     f.TitleBg:SetHeight(30)
     f.title = f:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
     f.title:SetPoint("TOP", f.TitleBg, "TOP", 0, -8)
-    f.title:SetText("WOWFC 按键设置")
+    f.title:SetText("WowFC 按键设置")
 
     -- 顶部说明文字 / 录键提示
     f.hint = f:CreateFontString(nil, "OVERLAY", "GameFontNormal")

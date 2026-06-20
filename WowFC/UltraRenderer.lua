@@ -1,80 +1,51 @@
--- PaletteRenderer.lua
--- 调色板纹理版 256x240 NES 帧渲染器,作为 UltraRenderer 的 A/B 备选实现。
+-- UltraRenderer.lua
+-- 256x240 原生分辨率 NES 帧渲染器,目标 60fps。
 --
--- 与 UltraRenderer 的唯一区别在"改一个像素颜色"的方式:
---   UltraRenderer: tex:SetColorTexture(r, g, b)        -- 设纯色(顶点色 + 纯色着色)
---   PaletteRenderer: tex:SetTexCoord(u0, u1, v0, v1)   -- 共享调色板纹理,只改 UV
+-- 关键技术(参考 cfoust/gnomeboy 在 WoW 里跑 GameBoy 的方案):
+--   1. 拆分成 240 行,每行一个 Frame、256 个 1x1 Texture。
+--      WoW 单个 Frame 的子 widget 上限约为 2^14=16384,
+--      整屏 256x240=61440 必须分行才能合规。
+--   2. 主屏 + 每行都开 SetFlattensRenderLayers(true) + SetIsFrameBuffer(true)。
+--      让 GPU 把所有 sub-texture 离屏合成,大幅降低主渲染队列压力。
+--      参考:warcraft.wiki.gg/wiki/API_Frame_SetIsFrameBuffer
+--      "必须先 SetFlattensRenderLayers 否则可能 invisible frame"
+--   3. 脏检查:每像素记录 last_color,只有变化时才 SetColorTexture。
+--   4. RGB 缓存:24-bit int → {r,g,b} 用 metatable 懒加载。
 --
--- 借鉴 tna0y/wow-doom-within(src/frame.lua):所有像素 texture 指向同一张调色板图,
--- 重新着色等于平移纹理坐标,作者实测比换 texture/纯色更省。NES 颜色空间封闭(固定
--- 64 色),天然适合这种方案。是否真比 SetColorTexture 快,由 Bench.lua / "/fc bench"
--- 在真机上实测决定。
+-- buffer[i] 协议:i 是 (y*256 + x) 的 0-based 下标,值是 24-bit RGB 整数
+-- (R<<16 | G<<8 | B),与 PPU.lua 的 buffer 一致。
 --
--- 其余设计(分行抗 widget 上限、FrameBuffer/Flatten 离屏合成、last_color 脏检查、
--- skip/partial/full 三模式)与 UltraRenderer 完全一致,以保证两者"更新的像素集合"
--- 逐帧相同 —— 即视觉等价,A/B 对比才公平。
---
--- 数据源:Utils/PaletteData_Generated.lua(_G.WOWFC_PALETTE_DATA),由
--- tools/gen_palette_tga.py 生成,颜色与 Core/PPU.lua 同源。
---
--- 对外接口与 UltraRenderer 完全兼容(Create/Render/GetModeName/SetMode/
--- Show/Hide/SetPoint, 字段 currentFps / frame)。
+-- 对外接口与旧 UltraRenderer 兼容:
+--   factory:Create(parent, opts) → renderer
+--   renderer:Render(buffer, dirty_tiles)  -- dirty_tiles 暂时忽略
+--   renderer:GetModeName()
+--   renderer:SetMode(mode)
+--   renderer.currentFps  -- 字段
+--   renderer.frame       -- 字段(供 WowFC.lua 兼容引用)
 
-local PaletteRenderer = {}
-_G.WOWFC_PaletteRenderer = PaletteRenderer
+local UltraRenderer = {}
+_G.WowFC_UltraRenderer = UltraRenderer
 
 local SCREEN_WIDTH = 256
 local SCREEN_HEIGHT = 240
 
--- 从生成数据构建 RGB->index 反查表与每个 index 的纹理坐标。
--- 仅依赖 _G.WOWFC_PALETTE_DATA,在模块加载期一次性完成。
-local PaletteData = _G.WOWFC_PALETTE_DATA
+-- 24-bit RGB 整数 → {r,g,b}(归一化到 [0,1]),metatable 懒加载
+local colorCache = setmetatable({}, {
+    __index = function(t, k)
+        local r = bit.band(bit.rshift(k, 16), 0xFF) / 255
+        local g = bit.band(bit.rshift(k, 8), 0xFF) / 255
+        local b = bit.band(k, 0xFF) / 255
+        local v = { r, g, b }
+        t[k] = v
+        return v
+    end,
+})
 
--- rgbToIndex[color24] = 调色板下标(0..63)。重复色保留首个出现的下标;
--- 查不到的颜色(理论上不会出现,PPU 输出必在 64 色内)退化为 0,避免崩溃。
-local rgbToIndex
--- texCoords[index] = { left, right, top, bottom },预算好避免每像素再算。
-local texCoords
-
-local function buildLookup()
-    if not PaletteData or not PaletteData.palette then return false end
-
-    local pal = PaletteData.palette
-    local width = PaletteData.texWidth or 256
-    local span = PaletteData.colorSpan or 4
-
-    rgbToIndex = setmetatable({}, { __index = function() return 0 end })
-    texCoords = {}
-
-    for idx = 0, 63 do
-        local color = pal[idx]
-        if color then
-            -- 仅记录首个出现的颜色,后续重复色塌缩到它(视觉一致)
-            if rawget(rgbToIndex, color) == nil then
-                rgbToIndex[color] = idx
-            end
-            -- u 取色块内 [+1px, +(span-1)px] 区间,两端各留 1px 防双线性插值跨色
-            local left  = (idx * span + 1) / width
-            local right = (idx * span + (span - 1)) / width
-            texCoords[idx] = { left, right, 0.25, 0.75 }
-        end
-    end
-    return true
-end
-
-local lookupReady = buildLookup()
-
-function PaletteRenderer:Create(parent, options)
-    if not lookupReady then
-        print("|cffff0000WOWFC|r: PaletteRenderer 缺少调色板数据(PaletteData_Generated.lua 未加载),请先运行 tools/gen_palette_tga.py 并在 TOC 中声明。")
-        return nil
-    end
-
+function UltraRenderer:Create(parent, options)
     options = options or {}
     local scale = options.scale or 2
     local screenW = SCREEN_WIDTH * scale
     local screenH = SCREEN_HEIGHT * scale
-    local texPath = PaletteData.texPath
 
     local renderer = {
         scale = scale,
@@ -84,10 +55,11 @@ function PaletteRenderer:Create(parent, options)
         currentFps = 0,
         lastFpsUpdate = 0,
 
+        -- pixel_count 个像素的 last_color 缓存(用一维数组减少索引开销)
         last_colors = {},
     }
 
-    -- 主 screen frame:开 flatten + framebuffer(与 UltraRenderer 一致)
+    -- 主 screen frame:开 flatten + framebuffer
     renderer.frame = CreateFrame("Frame", nil, parent)
     renderer.frame:SetSize(screenW, screenH)
     renderer.frame:SetPoint("TOPLEFT", parent, "TOPLEFT", 0, 0)
@@ -99,14 +71,13 @@ function PaletteRenderer:Create(parent, options)
     end
     renderer.frame:Show()
 
+    -- pixelW / pixelH:每个 NES 像素在屏幕上的实际像素尺寸
     local pixelW = screenW / SCREEN_WIDTH
     local pixelH = screenH / SCREEN_HEIGHT
 
+    -- 240 个 row frame,每行 256 texture。一维 pixels 数组按 (y*256 + x) 索引
     renderer.rows = {}
     renderer.pixels = {}
-
-    -- 首帧用的默认纹理坐标(index 0)
-    local tc0 = texCoords[0]
 
     for y = 0, SCREEN_HEIGHT - 1 do
         local row = CreateFrame("Frame", nil, renderer.frame)
@@ -125,18 +96,22 @@ function PaletteRenderer:Create(parent, options)
             local tex = row:CreateTexture(nil, "ARTWORK")
             tex:SetSize(pixelW, pixelH)
             tex:SetPoint("TOPLEFT", row, "TOPLEFT", x * pixelW, 0)
-            -- 关键:所有像素共享同一张调色板纹理,运行期只改 SetTexCoord
-            tex:SetTexture(texPath)
-            tex:SetTexCoord(tc0[1], tc0[2], tc0[3], tc0[4])
+            tex:SetColorTexture(0, 0, 0)
             renderer.pixels[rowBase + x] = tex
             renderer.last_colors[rowBase + x] = -1  -- 强制首帧全量重绘
         end
     end
 
     --------------------------------------------------------------------
-    -- Render:与 UltraRenderer 同构(skip/partial/full),改色用 SetTexCoord。
-    -- @param buffer table  长度 256*240,buffer[i] = 24-bit RGB int
-    -- @param ppu    携带 _frameMode / undo / new 列表,可为 nil(退化为 full)
+    -- Render: 把 NES framebuffer 投到屏幕
+    -- @param buffer table  长度 256*240 的数组,buffer[i] = 24-bit RGB int
+    -- @param ppu PPU 对象  携带本帧元数据,可能为 nil(向后兼容)
+    --
+    -- ppu._frameMode 决定遍历策略:
+    --   "skip"    本帧无任何变化 → 直接 return,Present ≈ 0
+    --   "partial" 仅 sprite 变化 → 仅扫描 (撤销区 ∪ 新画区) ≈ 1.5k-3k 像素
+    --   "full"    BG 变化 → 全屏 60K 像素扫描(老路径)
+    -- 没有 ppu 元数据时退化到全屏扫描,行为与旧版兼容。
     --------------------------------------------------------------------
     function renderer:Render(buffer, ppu)
         if not buffer then return 0 end
@@ -144,13 +119,14 @@ function PaletteRenderer:Create(parent, options)
         local startTime = debugprofilestop and debugprofilestop() or 0
         local pixels = self.pixels
         local last = self.last_colors
-        local r2i = rgbToIndex
-        local tcs = texCoords
+        local cache = colorCache
         local changed = 0
 
+        -- 没传 ppu / mode 缺失 → 全屏老路径
         local mode = ppu and ppu._frameMode or "full"
 
         if mode == "skip" then
+            -- 啥都不画。但仍然要更新 fps 计数让 UI 数字不停。
             self.frameCount = self.frameCount + 1
             local now = GetTime and GetTime() or 0
             if now - self.lastFpsUpdate >= 1.0 then
@@ -162,14 +138,18 @@ function PaletteRenderer:Create(parent, options)
         end
 
         if mode == "partial" then
+            -- 只扫两段列表,典型 1.5k-3k 像素而非 60k。
+            -- 撤销区:上一帧 sprite 占用、本帧已被 PPU 用 BG 颜色填回的位置。
+            -- 新画区:本帧 sprite 写入的位置。
+            -- 两段可能有重叠,但每个 index 独立比 last_color → 双写无副作用。
             local undoList = ppu._frameUndoList
             local undoN    = ppu._frameUndoN or 0
             for k = 1, undoN do
                 local i = undoList[k]
                 local color = buffer[i] or 0
                 if last[i] ~= color then
-                    local tc = tcs[r2i[color]]
-                    pixels[i]:SetTexCoord(tc[1], tc[2], tc[3], tc[4])
+                    local rgb = cache[color]
+                    pixels[i]:SetColorTexture(rgb[1], rgb[2], rgb[3])
                     last[i] = color
                     changed = changed + 1
                 end
@@ -181,26 +161,27 @@ function PaletteRenderer:Create(parent, options)
                 local i = newList[k]
                 local color = buffer[i] or 0
                 if last[i] ~= color then
-                    local tc = tcs[r2i[color]]
-                    pixels[i]:SetTexCoord(tc[1], tc[2], tc[3], tc[4])
+                    local rgb = cache[color]
+                    pixels[i]:SetColorTexture(rgb[1], rgb[2], rgb[3])
                     last[i] = color
                     changed = changed + 1
                 end
             end
         else
-            -- "full":整屏扫描
+            -- "full":整屏扫描(BG 变化、首帧、向后兼容)
             local total = SCREEN_WIDTH * SCREEN_HEIGHT
             for i = 0, total - 1 do
                 local color = buffer[i] or 0
                 if last[i] ~= color then
-                    local tc = tcs[r2i[color]]
-                    pixels[i]:SetTexCoord(tc[1], tc[2], tc[3], tc[4])
+                    local rgb = cache[color]
+                    pixels[i]:SetColorTexture(rgb[1], rgb[2], rgb[3])
                     last[i] = color
                     changed = changed + 1
                 end
             end
         end
 
+        -- 帧率统计(用 GetTime,debugprofilestop 仅做精度细节)
         self.frameCount = self.frameCount + 1
         local now = GetTime and GetTime() or 0
         if now - self.lastFpsUpdate >= 1.0 then
@@ -213,11 +194,16 @@ function PaletteRenderer:Create(parent, options)
         return frameTime, changed
     end
 
+    --------------------------------------------------------------------
+    -- 兼容旧接口
+    --------------------------------------------------------------------
     function renderer:GetModeName()
-        return "调色板 256x240"
+        return "原生 256x240"
     end
 
-    function renderer:SetMode(_mode) end
+    function renderer:SetMode(_mode)
+        -- 新渲染器只有原生模式,无需切换
+    end
 
     function renderer:Show() self.frame:Show() end
     function renderer:Hide() self.frame:Hide() end

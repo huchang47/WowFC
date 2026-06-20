@@ -88,7 +88,7 @@ def write_lua(filepath):
     lines.append("-- 供 PaletteRenderer.lua 读取:NES 64 色调色板 + 调色板纹理元数据。")
     lines.append("-- 颜色与 Core/PPU.lua loadPalette() 同源。")
     lines.append("")
-    lines.append("_G.WOWFC_PALETTE_DATA = {")
+    lines.append("_G.WowFC_PALETTE_DATA = {")
     lines.append('    texPath = "%s",' % WOW_TEX_PATH.replace("\\", "\\\\"))
     lines.append("    texWidth = %d," % TEX_WIDTH)
     lines.append("    texHeight = %d," % TEX_HEIGHT)
@@ -112,12 +112,12 @@ def write_lua(filepath):
 
 def main():
     script_dir = os.path.dirname(os.path.abspath(__file__))
-    addon_dir = os.path.abspath(os.path.join(script_dir, ".."))
+    addon_dir = os.path.abspath(os.path.join(script_dir, "..", "WowFC"))
     tga_path = os.path.join(addon_dir, "PaletteTex.tga")
     lua_path = os.path.join(addon_dir, "Utils", "PaletteData_Generated.lua")
 
     print("=" * 56)
-    print("WOWFC 调色板纹理生成工具")
+    print("WowFC 调色板纹理生成工具")
     print("=" * 56)
     print("颜色数: %d  纹理: %dx%d  每色列宽: %d" %
           (len(PALETTE), TEX_WIDTH, TEX_HEIGHT, COLOR_SPAN))

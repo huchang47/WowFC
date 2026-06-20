@@ -35,7 +35,7 @@ def bytes_to_lua_code(filename, bytes_data):
 
     lines = []
     lines.append(f'-- ROM: {safe_filename} ({len(bytes_data)} bytes)')
-    lines.append(f'WOWFC_ROM_DATA["{safe_filename}"] = {{')
+    lines.append(f'WowFC_ROM_DATA["{safe_filename}"] = {{')
 
     # 每行 16 个字节
     for i in range(0, len(bytes_data), 16):
@@ -73,8 +73,8 @@ def generate_rom_data_file(roms_dir, output_file):
 -- 请勿手动编辑（由 tools/convert_roms.py 生成）
 
 -- ROM 数据存储
--- 游戏内通过 _G.WOWFC_ROM_DATA[filename] 直接读取（见 WOWFC.lua:ReadROMFile）
-_G.WOWFC_ROM_DATA = _G.WOWFC_ROM_DATA or {}
+-- 游戏内通过 _G.WowFC_ROM_DATA[filename] 直接读取（见 WowFC.lua:ReadROMFile）
+_G.WowFC_ROM_DATA = _G.WowFC_ROM_DATA or {}
 
 """
 
@@ -92,8 +92,8 @@ _G.WOWFC_ROM_DATA = _G.WOWFC_ROM_DATA or {}
                 total_size += len(bytes_data)
                 print(f"已处理: {rom_file} ({len(bytes_data)} bytes)")
 
-    footer = """-- 数据已全部加载到 _G.WOWFC_ROM_DATA。
--- 游戏内直接通过 _G.WOWFC_ROM_DATA[filename] 取用（见 WOWFC.lua:ReadROMFile）。
+    footer = """-- 数据已全部加载到 _G.WowFC_ROM_DATA。
+-- 游戏内直接通过 _G.WowFC_ROM_DATA[filename] 取用（见 WowFC.lua:ReadROMFile）。
 """
 
     # 写入输出文件
@@ -130,6 +130,18 @@ def get_script_dir():
         return os.path.dirname(os.path.abspath(__file__))
 
 
+def get_addon_dir(script_dir):
+    """Return the WowFC addon root for both packaged exe and source-tree use."""
+    if os.path.exists(os.path.join(script_dir, 'WowFC.toc')):
+        return script_dir
+
+    candidate = os.path.abspath(os.path.join(script_dir, '..', 'WowFC'))
+    if os.path.exists(os.path.join(candidate, 'WowFC.toc')):
+        return candidate
+
+    return script_dir
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="将 .nes ROM 文件转换为 WoW 插件可用的 Lua 数据文件"
@@ -137,12 +149,12 @@ def main():
     parser.add_argument(
         "--roms-dir", "-r",
         default=None,
-        help="ROMs 目录路径 (默认: 工具所在目录的 ../ROMs)"
+        help="ROMs 目录路径 (默认: 插件目录的 ROMs)"
     )
     parser.add_argument(
         "--output", "-o",
         default=None,
-        help="输出 Lua 文件路径 (默认: 工具所在目录的 ../Utils/ROMData_Generated.lua)"
+        help="输出 Lua 文件路径 (默认: 插件目录的 Utils/ROMData_Generated.lua)"
     )
 
     args = parser.parse_args()
@@ -151,15 +163,16 @@ def main():
     script_dir = get_script_dir()
 
     # 路径配置
-    roms_dir = args.roms_dir or os.path.join(script_dir, '..', 'ROMs')
-    output_file = args.output or os.path.join(script_dir, '..', 'Utils', 'ROMData_Generated.lua')
+    addon_dir = get_addon_dir(script_dir)
+    roms_dir = args.roms_dir or os.path.join(addon_dir, 'ROMs')
+    output_file = args.output or os.path.join(addon_dir, 'Utils', 'ROMData_Generated.lua')
 
     # 转换为绝对路径
     roms_dir = os.path.abspath(roms_dir)
     output_file = os.path.abspath(output_file)
 
     print("=" * 60)
-    print("WOWFC ROM 转换工具")
+    print("WowFC ROM 转换工具")
     print("=" * 60)
     print(f"ROMs 目录: {roms_dir}")
     print(f"输出文件: {output_file}")
@@ -172,7 +185,7 @@ def main():
         print("转换完成!")
         print("\n请在 TOC 文件中确保加载顺序:")
         print("  Utils\\ROMData_Generated.lua")
-        print("  WOWFC.lua")
+        print("  WowFC.lua")
     else:
         print("转换失败!")
         sys.exit(1)

@@ -2,9 +2,9 @@
 -- 自动生成的 APU 音色映射表
 -- 请勿手动编辑（由 tools/gen_tones.py 生成）
 
--- 运行时由 _G.WOWFC_APU_TONEMAP 读取：
+-- 运行时由 _G.WowFC_APU_TONEMAP 读取：
 --   按通道波形（pulse / triangle）+ MIDI 音高定位音色文件路径
-_G.WOWFC_APU_TONEMAP = {
+_G.WowFC_APU_TONEMAP = {
     format = "wav",
     a4 = 440.0,
     range = { low = 21, high = 127 },

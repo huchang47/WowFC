@@ -54,7 +54,7 @@ git clone https://github.com/huchang47/WowFC.git WowFC
 ### 加载游戏
 
 1. 将你的 `.nes` 格式 ROM 文件放入 `WowFC/ROMs/` 目录
-2. 运行转换工具 `tools/convert_roms.py` 将 ROM 转换为 Lua 数据格式
+2. 运行 `WowFC/WowFC_ROM_Converter.exe` 将 ROM 转换为 Lua 数据格式
 3. 在游戏内输入 `/reload` 重新加载插件
 4. 点击插件界面上的"加载 ROM"按钮选择并加载游戏
 
@@ -94,8 +94,8 @@ WowFC/
 ├── ROMs/           # ROM 目录（仓库中仅 README）
 ├── UltraRenderer.lua  # 渲染器
 ├── Keybinding.lua  # 按键映射
-├── WOWFC.lua       # 插件主入口
-└── WOWFC.toc       # 插件清单
+├── WowFC.lua       # 插件主入口
+└── WowFC.toc       # 插件清单
 ```
 
 ## 技术说明

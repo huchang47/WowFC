@@ -4,7 +4,7 @@ print("FileBytes =", os.path.getsize(f))
 with open(f, 'r', encoding='utf-8') as fh:
     text = fh.read()
 # find all entry headers
-for m in re.finditer(r'WOWFC_ROM_DATA\[(".*?")\]\s*=\s*\{', text):
+for m in re.finditer(r'WowFC_ROM_DATA\[(".*?")\]\s*=\s*\{', text):
     print("ENTRY:", m.group(1))
 # Count bytes per entry by parsing 0x.. tokens between braces is heavy; just report comment sizes
 for m in re.finditer(r'-- ROM: (.*?) \((\d+) bytes\)', text):

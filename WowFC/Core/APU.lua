@@ -82,10 +82,10 @@ end
 -- 挂为 APU 子表,供调度层(tick,任务 6.x)与单元测试访问。
 APU.SoundBackend = SoundBackend
 
--- 读取全局音色映射表(_G.WOWFC_APU_TONEMAP,由 Utils/APUToneMap_Generated.lua 提供)。
+-- 读取全局音色映射表(_G.WowFC_APU_TONEMAP,由 Utils/APUToneMap_Generated.lua 提供)。
 -- 表缺失或不是 table 时返回 nil,供调用方安全降级(不报错)。
 local function getToneMap()
-    local map = _G.WOWFC_APU_TONEMAP
+    local map = _G.WowFC_APU_TONEMAP
     if type(map) ~= "table" then
         return nil
     end
@@ -152,7 +152,7 @@ function APU:new(nes)
     local apu = setmetatable({}, self)
     apu.nes = nes
 
-    apu.enabled = true        -- 声音总开关(来自 WOWFCDB.soundEnabled)
+    apu.enabled = true        -- 声音总开关(来自 WowFCDB.soundEnabled)
     -- SoundBackend 探测结果(降级标志):缺少 PlaySoundFile 或映射表为空时置 false。
     -- 静默降级语义:available=false 时 tick 照常解析(不报错)但不触发任何播放,
     -- 模拟器画面与输入不受影响(需求 4.3/5.5)。
@@ -516,7 +516,7 @@ end
 
 -- ============================================================================
 -- 声音总开关(任务 7.1,需求 4.2/5.5)。
--- 由斜杠命令 /fc sound on|off(任务 10.x)与 WOWFCDB.soundEnabled 持久化驱动。
+-- 由斜杠命令 /fc sound on|off(任务 10.x)与 WowFCDB.soundEnabled 持久化驱动。
 -- ============================================================================
 
 -- 设置声音总开关。on 为真值即启用,否则关闭(self.enabled 规整为 boolean)。

@@ -1,4 +1,4 @@
-﻿-- ROM.lua
+-- ROM.lua
 -- ROM 加载器和解析器
 -- 基于 JSNES 的 rom.js 移植
 
@@ -216,7 +216,7 @@ function ROM:createMapper()
     if print then
         local typeName = self.MAPPER_TYPE[self.mapperType] or "Unknown"
         print(string.format(
-            "|cffff8800WOWFC|r: 不支持的 mapper %d (%s),退化到 NROM,游戏可能无法正常运行。",
+            "|cffff8800WowFC|r: 不支持的 mapper %d (%s),退化到 NROM,游戏可能无法正常运行。",
             self.mapperType, typeName))
     end
     return _G.Mapper0:new(self.nes, self)
