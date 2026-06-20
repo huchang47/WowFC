@@ -1,4 +1,4 @@
-package-as: WowFC
+package-as: WOWFC
 
 ignore:
   - .github
