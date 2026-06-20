@@ -1,10 +1,10 @@
-## Interface: 120005,120007
+## Interface: 120007
 ## Title: WOWFC
 ## Title-zhCN: 魔兽世界FC模拟器
 ## Notes: FC/NES Emulator for World of Warcraft
 ## Notes-zhCN: 小霸王其乐无穷啊
 ## Author: [黑科研]胡涂 / [黑科研]童
-## Version: 1.1.0
+## Version: 1.1.1
 ## SavedVariables: WOWFCDB
 
 # Utils
