@@ -1,5 +1,9 @@
 # -*- mode: python ; coding: utf-8 -*-
 
+import os
+import PyInstaller.config
+PyInstaller.config.CONF['distpath'] = os.path.dirname(os.path.abspath(SPECPATH))
+
 
 a = Analysis(
     ['convert_roms.py'],

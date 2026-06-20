@@ -1,5 +1,9 @@
 .history/
 Utils/ROMData_Generated.lua
 tools/compat_mapper0.txt
-ROMs/
-.kiro/
+tools/build/
+tools/dev/
+__pycache__/
+*.pyc
+.*/
+*.bat
