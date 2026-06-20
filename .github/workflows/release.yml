@@ -1,13 +1,13 @@
-name: Release WowFC
+name: Package and Release
 
 on:
   push:
     tags:
-      - 'v*'
+      - "v*"
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Release tag (e.g. v1.1.1-manual)'
+        description: "Release tag to package, for example v1.1.1"
         required: true
         type: string
 
@@ -16,54 +16,23 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+
+    env:
+      CF_API_KEY: ${{ secrets.CF_API_KEY || secrets.CURSEFORGE_API_TOKEN }}
+      CF_API_TOKEN: ${{ secrets.CF_API_KEY || secrets.CURSEFORGE_API_TOKEN }}
+      WOWI_API_TOKEN: ${{ secrets.WOWI_API_TOKEN }}
+      WAGO_API_TOKEN: ${{ secrets.WAGO_API_TOKEN }}
+      GITHUB_OAUTH: ${{ secrets.GITHUB_TOKEN }}
+      GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
     steps:
-      - name: Checkout repository
+      - name: Clone Project
         uses: actions/checkout@v4
-
-      - name: Resolve release metadata
-        id: meta
-        run: |
-          VERSION="${{ github.event.inputs.tag || github.ref_name }}"
-          # Strip leading 'v' for .toc consistency if needed; keep it for release.json
-          FILENAME=$(jq -r --arg v "$VERSION" '.[0].filename | sub("v1\\.1\\.1"; $v)' release.json)
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "filename=$FILENAME" >> $GITHUB_OUTPUT
-          echo "Resolved version: $VERSION, filename: $FILENAME"
-
-      - name: Package WowFC
-        run: |
-          VERSION="${{ steps.meta.outputs.version }}"
-          FILENAME="${{ steps.meta.outputs.filename }}"
-          mkdir -p WowFC
-          # 更新 release.json 中的版本和文件名
-          jq --arg v "$VERSION" --arg f "$FILENAME" '.[0].version = $v | .[0].filename = $f' release.json > WowFC/release.json
-          # 复制根目录插件文件
-          cp *.lua *.toc *.tga WowFC/
-          # 复制 .bat 脚本（如果存在）
-          cp *.bat WowFC/ 2>/dev/null || true
-          # 复制核心目录
-          cp -r Core Utils Sound ROMs WowFC/
-          # 复制 tools 源码，排除 build 产物和 exe
-          mkdir -p WowFC/tools
-          cp tools/*.py tools/*.spec WowFC/tools/
-          cp -r tools/dev WowFC/tools/
-          # 创建 zip
-          zip -r "$FILENAME" WowFC/
-
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ steps.meta.outputs.version }}
-          files: ${{ steps.meta.outputs.filename }}
-          generate_release_notes: true
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ref: ${{ inputs.tag || github.ref }}
+          fetch-depth: 0
 
-      - name: Upload to CurseForge
-        uses: ccarney16/pactribsys-curseforge@v2
+      - name: Package and Release
+        uses: BigWigsMods/packager@v2
         with:
-          token: ${{ secrets.CURSEFORGE_API_TOKEN }}
-          project: ${{ secrets.CURSEFORGE_PROJECT_ID }}
-          file: ${{ steps.meta.outputs.filename }}
-          changelog: ''
-          release-type: release
+          args: ${{ secrets.CURSEFORGE_PROJECT_ID && format('-p {0}', secrets.CURSEFORGE_PROJECT_ID) || '' }}

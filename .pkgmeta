@@ -1,0 +1,16 @@
+package-as: WowFC
+
+ignore:
+  - .github
+  - .gitignore
+  - .vscode
+  - WOWFC_ROM_Converter.exe
+  - release.json
+  - tools/build
+  - tools/dev
+  - tools/compat_mapper0.txt
+  - screenshot.png
+
+manual-changelog:
+  filename: README.md
+  markup-type: markdown
