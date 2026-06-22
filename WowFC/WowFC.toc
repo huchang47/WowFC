@@ -4,7 +4,7 @@
 ## Notes: FC/NES Emulator for World of Warcraft
 ## Notes-zhCN: 小霸王其乐无穷啊
 ## Author: [黑科研]胡涂 / [黑科研]童
-## Version: 1.1.1
+## Version: 1.1.2
 ## IconTexture: Interface\AddOns\WowFC\WowFCLogo.tga
 ## SavedVariables: WowFCDB
 
