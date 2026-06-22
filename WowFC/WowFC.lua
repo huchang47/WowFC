@@ -57,11 +57,14 @@ local WOW_MUTE_CVARS = {
 --   M:IsRecording() 是否在录键中(录键时 FC 不接收输入)
 local KB = WowFC_Keybinding
 
+-- 本地化字符串表
+local L = _G.WowFC_Locale or {}
+
 -- 初始化
 function addon:OnInitialize()
-    print(string.format("|cff00ff00WowFC|r v%s |cff888888— 魔兽世界里的 FC 模拟器|r",
-        ADDON_VERSION))
-    print("|cff888888输入 |r|cffffff00/fc|r|cff888888 打开/关闭。键盘按 |r|cffffff00ESC|r|cff888888 退出操控模式。|r")
+    print(string.format("|cff00ff00WowFC|r v%s |cff888888— %s|r",
+        ADDON_VERSION, L["ADDON_TITLE"] or "FC Emulator in World of Warcraft"))
+    print(L["TOGGLE_HINT"] or "Type |cffffff00/fc|r to open/close. Press |cffffff00ESC|r to exit control mode.")
 
     -- 加载持久化按键映射(SavedVariables WowFCDB.keybindings)
     KB:Load()
@@ -81,28 +84,29 @@ function addon:OnInitialize()
     SlashCmdList["WowFC"] = function(msg)
         msg = (msg or ""):lower():gsub("^%s+", ""):gsub("%s+$", "")
         if msg == "prof" then
-            if nes then nes:dumpProfile() else print("|cffff0000WowFC|r: 未加载ROM") end
+            if nes then nes:dumpProfile() else print("|cffff0000WowFC|r: " .. (L["MSG_NO_ROM"] or "No ROM loaded")) end
         elseif msg == "profreset" then
-            if nes then nes:resetProfile() print("|cff00ff00WowFC|r: profile 已清零") end
+            if nes then nes:resetProfile() print("|cff00ff00WowFC|r: " .. (L["MSG_PROFILE_RESET"] or "Profile reset")) end
         elseif msg:match("^skip%s") or msg == "skip" then
             local rest = msg:match("^skip%s+(.+)$")
             if not nes then
-                print("|cffff0000WowFC|r: 未加载ROM")
+                print("|cffff0000WowFC|r: " .. (L["MSG_NO_ROM"] or "No ROM loaded"))
             elseif rest == "auto" then
                 nes:setFrameSkip("auto")
-                print("|cff00ff00WowFC|r: 帧跳过 = auto (动态调节)")
+                print("|cff00ff00WowFC|r: " .. (L["MSG_SKIP_AUTO"] or "Frame skip = auto (dynamic)"))
             elseif rest and tonumber(rest) then
                 local applied = nes:setFrameSkip(tonumber(rest))
                 if applied == 1 then
-                    print("|cff00ff00WowFC|r: 帧跳过 = 1 (每帧渲染,目标 60fps)")
+                    print("|cff00ff00WowFC|r: " .. (L["MSG_SKIP_1"] or "Frame skip = 1 (render every frame, target 60fps)"))
                 else
-                    print(string.format(
-                        "|cff00ff00WowFC|r: 帧跳过 skipN=%d (UI 约 %.0f fps,关闭 auto)",
+                    print(string.format("|cff00ff00WowFC|r: " ..
+                        (L["MSG_SKIP_N"] or "Frame skip skipN=%d (UI approx %.0f fps, auto off)"),
                         applied, 60 / applied))
                 end
             else
                 local mode = nes._frameSkipAuto and "auto" or "manual"
-                print(string.format("|cffff8800WowFC|r: 当前 skipN=%d (%s)。用法 /fc skip <1-10|auto>",
+                print(string.format("|cffff8800WowFC|r: " ..
+                    (L["MSG_SKIP_CURRENT"] or "Current skipN=%d (%s). Usage: /fc skip <1-10|auto>"),
                     nes._frameSkip or 1, mode))
             end
         elseif msg == "debug" then
@@ -112,9 +116,9 @@ function addon:OnInitialize()
             -- PaletteRenderer(SetTexCoord)在真实帧上的 Present 耗时。
             -- 用法 /fc bench [帧数] [回放遍数],默认 60 帧 × 10 遍。
             if not _G.WowFC_Bench then
-                print("|cffff0000WowFC|r: Bench 模块未加载")
+                print("|cffff0000WowFC|r: " .. (L["MSG_BENCH_NOT_LOADED"] or "Bench module not loaded"))
             elseif not isRunning or not nes then
-                print("|cffff8800WowFC|r: 请先加载并运行 ROM(基准需要真实运行画面)")
+                print("|cffff8800WowFC|r: " .. (L["MSG_BENCH_NEED_ROM"] or "Please load and run a ROM first (benchmark needs real frames)"))
             else
                 local f, r = msg:match("^bench%s+(%d+)%s+(%d+)$")
                 if not f then f = msg:match("^bench%s+(%d+)$") end
@@ -123,38 +127,42 @@ function addon:OnInitialize()
         elseif msg:match("^scanline") then
             local rest = msg:match("^scanline%s+(%S+)$")
             if not nes then
-                print("|cffff0000WowFC|r: 未加载ROM")
+                print("|cffff0000WowFC|r: " .. (L["MSG_NO_ROM"] or "No ROM loaded"))
             elseif rest == "on" then
                 local r = nes:setScanlineMode(true)
                 if r then
-                    print("|cff00ff00WowFC|r: 逐扫描线渲染已|cff00ff00开启|r(支持 mid-frame 分屏/sprite0-hit,约 2x 开销)")
+                    print("|cff00ff00WowFC|r: " .. (L["MSG_SCANLINE_ON"] or "Scanline rendering enabled (~2x cost)"))
                 else
-                    print("|cffff8800WowFC|r: 当前为 SMB1 专用路径,逐扫描线开关无效")
+                    print("|cffff8800WowFC|r: " .. (L["MSG_SCANLINE_SMB1"] or "Current path is SMB1-only; scanline toggle has no effect"))
                 end
             elseif rest == "off" then
                 nes:setScanlineMode(false)
-                print("|cff00ff00WowFC|r: 逐扫描线渲染已|cffff0000关闭|r(vblank 整帧快照,性能最优)")
+                print("|cff00ff00WowFC|r: " .. (L["MSG_SCANLINE_OFF"] or "Scanline rendering disabled (best performance)"))
             else
-                print(string.format("|cffff8800WowFC|r: 逐扫描线 = %s。用法 /fc scanline <on|off>",
+                print(string.format("|cffff8800WowFC|r: " ..
+                    (L["MSG_SCANLINE_CURRENT"] or "Scanline = %s. Usage: /fc scanline <on|off>"),
                     nes:getScanlineMode() and "on" or "off"))
             end
         elseif msg:match("^sound") then
             -- 声音总开关:/fc sound on|off,委托 APU:setEnabled
             local rest = msg:match("^sound%s+(%S+)$")
             if not nes then
-                print("|cffff0000WowFC|r: 未加载ROM")
+                print("|cffff0000WowFC|r: " .. (L["MSG_NO_ROM"] or "No ROM loaded"))
             elseif rest == "on" then
                 WowFCDB = WowFCDB or {}
                 WowFCDB.soundEnabled = true
                 nes.apu:setEnabled(true)
-                print("|cff00ff00WowFC|r: 声音已|cff00ff00开启|r")
+                if self._updateSoundButton then self._updateSoundButton() end
+                print("|cff00ff00WowFC|r: " .. (L["MSG_SOUND_ON"] or "Sound enabled"))
             elseif rest == "off" then
                 WowFCDB = WowFCDB or {}
                 WowFCDB.soundEnabled = false
                 nes.apu:setEnabled(false)
-                print("|cff00ff00WowFC|r: 声音已|cffff0000关闭|r")
+                if self._updateSoundButton then self._updateSoundButton() end
+                print("|cff00ff00WowFC|r: " .. (L["MSG_SOUND_OFF"] or "Sound disabled"))
             else
-                print(string.format("|cffff8800WowFC|r: 声音 = %s。用法 /fc sound <on|off>",
+                print(string.format("|cffff8800WowFC|r: " ..
+                    (L["MSG_SOUND_CURRENT"] or "Sound = %s. Usage: /fc sound <on|off>"),
                     nes.apu:isEnabled() and "on" or "off"))
             end
         elseif msg == "boost" then
@@ -162,9 +170,9 @@ function addon:OnInitialize()
             WowFCDB.boostDisabled = not WowFCDB.boostDisabled
             if WowFCDB.boostDisabled then
                 self:ApplyPerfCVars(false)
-                print("|cff00ff00WowFC|r: 性能增强已|cffff0000关闭|r(不再解除 WoW 帧率上限)")
+                print("|cff00ff00WowFC|r: " .. (L["MSG_BOOST_OFF"] or "Performance boost disabled"))
             else
-                print("|cff00ff00WowFC|r: 性能增强已|cff00ff00开启|r(模拟器运行时解除 WoW 帧率上限)")
+                print("|cff00ff00WowFC|r: " .. (L["MSG_BOOST_ON"] or "Performance boost enabled"))
                 if isRunning then self:ApplyPerfCVars(true) end
             end
         elseif msg == "help" then
@@ -203,12 +211,12 @@ function addon:CreateMainFrame()
     MainFrame.TitleBg:SetHeight(30)
     MainFrame.title = MainFrame:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
     MainFrame.title:SetPoint("TOP", MainFrame.TitleBg, "TOP", 0, -8)
-    MainFrame.title:SetText("WowFC v" .. ADDON_VERSION .. " - FC 模拟器")
+    MainFrame.title:SetText("WowFC v" .. ADDON_VERSION .. " - " .. (L["TITLE_SUFFIX"] or "FC Emulator"))
 
     -- 状态文本
     MainFrame.statusText = MainFrame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     MainFrame.statusText:SetPoint("TOP", MainFrame, "TOP", 0, -35)
-    MainFrame.statusText:SetText("未加载 ROM - 点击'加载 ROM'开始")
+    MainFrame.statusText:SetText(L["STATUS_NO_ROM"] or "No ROM loaded - click 'Load ROM' to start")
 
     -- FPS显示
     MainFrame.fpsText = MainFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
@@ -233,27 +241,29 @@ function addon:CreateMainFrame()
         })
     else
         renderer = nil
-        MainFrame.statusText:SetText("渲染器加载失败")
-        print("|cffff0000WowFC|r: 未找到渲染器模块，请检查 UltraRenderer.lua 是否已加载")
+        MainFrame.statusText:SetText(L["STATUS_RENDERER_FAIL"] or "Renderer failed to load")
+        print("|cffff0000WowFC|r: " .. (L["MSG_RENDERER_NOT_FOUND"] or "Renderer module not found; please check that UltraRenderer.lua is loaded"))
     end
 
     -- 按钮区域
     local buttonY = -SCREEN_HEIGHT * SCALE - 65
+    local gap = 6
+    local loadW, normalW, controlW = 82, 70, 98
 
     -- 加载 ROM 按钮
     local loadBtn = CreateFrame("Button", nil, MainFrame, "UIPanelButtonTemplate")
-    loadBtn:SetSize(70, 22)
+    loadBtn:SetSize(loadW, 24)
     loadBtn:SetPoint("TOPLEFT", MainFrame, "TOPLEFT", 15, buttonY)
-    loadBtn:SetText("加载ROM")
+    loadBtn:SetText(L["BTN_LOAD_ROM"] or "Load ROM")
     loadBtn:SetScript("OnClick", function()
         self:ShowROMLoader()
     end)
 
     -- 开始/暂停按钮
     local pauseBtn = CreateFrame("Button", nil, MainFrame, "UIPanelButtonTemplate")
-    pauseBtn:SetSize(60, 22)
-    pauseBtn:SetPoint("LEFT", loadBtn, "RIGHT", 5, 0)
-    pauseBtn:SetText("开始")
+    pauseBtn:SetSize(normalW, 24)
+    pauseBtn:SetPoint("LEFT", loadBtn, "RIGHT", gap, 0)
+    pauseBtn:SetText(L["BTN_START"] or "Start")
     pauseBtn:SetScript("OnClick", function()
         self:TogglePause()
     end)
@@ -261,29 +271,26 @@ function addon:CreateMainFrame()
 
     -- 重置按钮
     local resetBtn = CreateFrame("Button", nil, MainFrame, "UIPanelButtonTemplate")
-    resetBtn:SetSize(60, 22)
-    resetBtn:SetPoint("LEFT", pauseBtn, "RIGHT", 5, 0)
-    resetBtn:SetText("重置")
+    resetBtn:SetSize(normalW, 24)
+    resetBtn:SetPoint("LEFT", pauseBtn, "RIGHT", gap, 0)
+    resetBtn:SetText(L["BTN_RESET"] or "Reset")
     resetBtn:SetScript("OnClick", function()
         self:ResetFC()
     end)
 
-    -- 调试按钮
-    local debugBtn = CreateFrame("Button", nil, MainFrame, "UIPanelButtonTemplate")
-    debugBtn:SetSize(60, 22)
-    debugBtn:SetPoint("LEFT", resetBtn, "RIGHT", 5, 0)
-    debugBtn:SetText("调试")
-    debugBtn:SetScript("OnClick", function()
-        self:ShowDebugInfo()
-    end)
+    -- 声音开关按钮
+    local soundBtn = CreateFrame("Button", nil, MainFrame, "UIPanelButtonTemplate")
+    soundBtn:SetSize(controlW, 24)
+    soundBtn:SetPoint("LEFT", resetBtn, "RIGHT", gap, 0)
+    MainFrame.soundBtn = soundBtn
 
     -- 操控开关:玩 FC 时按下,FC 独占键盘,WoW 角色不响应;
     -- 再按一次切回 WoW 控制(WoW 角色恢复响应,FC 不接收)。
     -- 也可以按 ESC 一键退出操控模式。
     local controlBtn = CreateFrame("Button", nil, MainFrame, "UIPanelButtonTemplate")
-    controlBtn:SetSize(80, 22)
-    controlBtn:SetPoint("LEFT", debugBtn, "RIGHT", 5, 0)
-    controlBtn:SetText("操控:关")
+    controlBtn:SetSize(controlW, 24)
+    controlBtn:SetPoint("LEFT", soundBtn, "RIGHT", gap, 0)
+    controlBtn:SetText(L["BTN_CONTROL_OFF"] or "Control: Off")
     MainFrame.controlBtn = controlBtn
     addon._controlMode = false  -- 默认关:WoW 优先,FC 不响应键盘
 
@@ -292,13 +299,13 @@ function addon:CreateMainFrame()
         if addon._controlMode then
             -- 独占键盘:WoW 角色不响应方向键/Z/Enter 等
             MainFrame:SetPropagateKeyboardInput(false)
-            controlBtn:SetText("操控:开")
-            MainFrame.statusText:SetText("操控模式 (按 ESC 退出)")
+            controlBtn:SetText(L["BTN_CONTROL_ON"] or "Control: On")
+            MainFrame.statusText:SetText(L["STATUS_CONTROL_ON"] or "Control mode (press ESC to exit)")
         else
             -- 释放键盘:WoW 恢复正常,FC 不接收按键(避免双开)
             MainFrame:SetPropagateKeyboardInput(true)
-            controlBtn:SetText("操控:关")
-            MainFrame.statusText:SetText("WoW 控制模式 (点窗口或按钮启用操控)")
+            controlBtn:SetText(L["BTN_CONTROL_OFF"] or "Control: Off")
+            MainFrame.statusText:SetText(L["STATUS_CONTROL_OFF"] or "WoW control mode (click window or button to enable control)")
             -- 释放所有按钮 + 清连发,避免离开操控模式时按键卡住
             if nes then
                 for btn = 0, 7 do
@@ -315,11 +322,34 @@ function addon:CreateMainFrame()
         applyControlMode(not addon._controlMode)
     end)
 
+    local function updateSoundButton()
+        WowFCDB = WowFCDB or {}
+        if WowFCDB.soundEnabled == nil then WowFCDB.soundEnabled = true end
+        if WowFCDB.soundEnabled then
+            soundBtn:SetText(L["BTN_SOUND_ON"] or "Sound: On")
+        else
+            soundBtn:SetText(L["BTN_SOUND_OFF"] or "Sound: Off")
+        end
+    end
+    addon._updateSoundButton = updateSoundButton
+
+    soundBtn:SetScript("OnClick", function()
+        WowFCDB = WowFCDB or {}
+        if WowFCDB.soundEnabled == nil then WowFCDB.soundEnabled = true end
+        WowFCDB.soundEnabled = not WowFCDB.soundEnabled
+        if nes and nes.apu then
+            nes.apu:setEnabled(WowFCDB.soundEnabled)
+        end
+        updateSoundButton()
+        print("|cff00ff00WowFC|r: " .. (WowFCDB.soundEnabled and (L["MSG_SOUND_ON"] or "Sound enabled") or (L["MSG_SOUND_OFF"] or "Sound disabled")))
+    end)
+    updateSoundButton()
+
     -- 按键设置按钮:打开自定义按键浮窗
     local keysBtn = CreateFrame("Button", nil, MainFrame, "UIPanelButtonTemplate")
-    keysBtn:SetSize(60, 22)
-    keysBtn:SetPoint("LEFT", controlBtn, "RIGHT", 5, 0)
-    keysBtn:SetText("按键")
+    keysBtn:SetSize(normalW, 24)
+    keysBtn:SetPoint("LEFT", controlBtn, "RIGHT", gap, 0)
+    keysBtn:SetText(L["BTN_KEYS"] or "Keys")
     keysBtn:SetScript("OnClick", function()
         KB:Show()
     end)
@@ -340,7 +370,7 @@ function addon:CreateMainFrame()
     C_Timer.NewTicker(0.5, function()
         if renderer and isRunning then
             local renderFps = renderer.currentFps or 0
-            local modeName = renderer.GetModeName and renderer:GetModeName() or "未知"
+            local modeName = renderer.GetModeName and renderer:GetModeName() or (L["UNKNOWN"] or "Unknown")
             MainFrame.fpsText:SetText(string.format("FPS:%d %s", renderFps, modeName))
         end
     end)
@@ -427,7 +457,7 @@ function addon:ShowROMLoader()
     self:ScanROMs()
 
     if #ROM_LIST == 0 then
-        print("|cffff8800WowFC|r: 没有找到任何 ROM。请把 .nes 文件放进 |cffffff00WowFC/ROMs|r 目录,跑一下转换工具,然后 /reload 即可看到游戏列表。")
+        print("|cffff8800WowFC|r: " .. (L["MSG_NO_ROMS_FOUND"] or "No ROMs found. Put .nes files into WowFC/ROMs, run the converter, then /reload."))
         return
     end
 
@@ -466,12 +496,12 @@ function addon:ShowROMLoader()
     ROMSelectorFrame.TitleBg:SetHeight(30)
     ROMSelectorFrame.title = ROMSelectorFrame:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
     ROMSelectorFrame.title:SetPoint("TOP", ROMSelectorFrame.TitleBg, "TOP", 0, -8)
-    ROMSelectorFrame.title:SetText("选择游戏")
+    ROMSelectorFrame.title:SetText(L["TITLE_SELECT_GAME"] or "Select Game")
 
     -- 说明
     local desc = ROMSelectorFrame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     desc:SetPoint("TOP", ROMSelectorFrame, "TOP", 0, -40)
-    desc:SetText("点击游戏名称加载：")
+    desc:SetText(L["DESC_SELECT_GAME"] or "Click a game title to load:")
 
     -- 滚动框
     local scroll = CreateFrame("ScrollFrame", "$parentScroll", ROMSelectorFrame, "UIPanelScrollFrameTemplate")
@@ -537,7 +567,7 @@ function addon:ShowROMLoader()
     local closeBtn = CreateFrame("Button", nil, ROMSelectorFrame, "UIPanelButtonTemplate")
     closeBtn:SetSize(80, 22)
     closeBtn:SetPoint("BOTTOM", ROMSelectorFrame, "BOTTOM", 0, 15)
-    closeBtn:SetText("关闭")
+    closeBtn:SetText(L["BTN_CLOSE"] or "Close")
     closeBtn:SetScript("OnClick", function()
         ROMSelectorFrame:Hide()
     end)
@@ -547,7 +577,7 @@ end
 
 -- 从文件加载 ROM
 function addon:LoadROMFromFile(filename)
-    MainFrame.statusText:SetText("加载中: " .. filename)
+    MainFrame.statusText:SetText((L["STATUS_LOADING"] or "Loading: ") .. filename)
 
     -- 创建 FC 实例
     if not nes then
@@ -573,8 +603,8 @@ function addon:LoadROMFromFile(filename)
     local romData = self:ReadROMFile(filename)
 
     if not romData then
-        MainFrame.statusText:SetText("ROM 文件读取失败: " .. filename)
-        print("|cffff0000WowFC|r: 无法读取 " .. filename .. ",请确认文件存在于 ROMs 目录")
+        MainFrame.statusText:SetText((L["STATUS_ROM_READ_FAIL"] or "ROM read failed: ") .. filename)
+        print("|cffff0000WowFC|r: " .. (L["MSG_CANNOT_READ"] or "Cannot read ") .. filename .. (L["MSG_CHECK_ROMS_DIR"] or ", please make sure the file exists in the ROMs directory"))
         return
     end
 
@@ -584,11 +614,11 @@ function addon:LoadROMFromFile(filename)
     end)
 
     if success and err then
-        MainFrame.statusText:SetText("已加载: " .. filename)
-        print("|cff00ff00WowFC|r: 已加载 " .. filename .. ",祝玩得开心!")
+        MainFrame.statusText:SetText((L["STATUS_LOADED"] or "Loaded: ") .. filename)
+        print("|cff00ff00WowFC|r: " .. (L["STATUS_LOADED"] or "Loaded: ") .. filename .. ", " .. (L["MSG_HAVE_FUN"] or "Have fun!"))
 
         isRunning = true
-        MainFrame.pauseBtn:SetText("暂停")
+        MainFrame.pauseBtn:SetText(L["BTN_PAUSE"] or "Pause")
         self:StartGameLoop()
 
         -- 加载 ROM 成功后自动开启操控模式,避免玩家手动找开关。
@@ -597,8 +627,8 @@ function addon:LoadROMFromFile(filename)
             self._applyControlMode(true)
         end
     else
-        MainFrame.statusText:SetText("ROM 加载失败")
-        print("|cffff0000WowFC|r: ROM 加载失败: " .. tostring(err))
+        MainFrame.statusText:SetText(L["STATUS_LOAD_FAILED"] or "ROM load failed")
+        print("|cffff0000WowFC|r: " .. (L["MSG_LOAD_FAILED"] or "ROM load failed: ") .. tostring(err))
     end
 end
 
@@ -642,7 +672,7 @@ function addon:PauseGame()
         return false
     end
     self:StopGameLoop()
-    if MainFrame and MainFrame.pauseBtn then MainFrame.pauseBtn:SetText("继续") end
+    if MainFrame and MainFrame.pauseBtn then MainFrame.pauseBtn:SetText(L["BTN_RESUME"] or "Resume") end
     isRunning = false
     self:RestoreWoWSound()
     return true
@@ -651,7 +681,7 @@ end
 function addon:ResumeGame()
     if not nes then return false end
     self:StartGameLoop()
-    if MainFrame and MainFrame.pauseBtn then MainFrame.pauseBtn:SetText("暂停") end
+    if MainFrame and MainFrame.pauseBtn then MainFrame.pauseBtn:SetText(L["BTN_PAUSE"] or "Pause") end
     if self._applyControlMode then
         self._applyControlMode(true)
     end
@@ -661,7 +691,7 @@ end
 
 function addon:TogglePause()
     if not nes then
-        print("|cffff0000WowFC|r: 请先加载ROM")
+        print("|cffff0000WowFC|r: " .. (L["MSG_PLEASE_LOAD_ROM"] or "Please load a ROM first"))
         return
     end
 
@@ -720,11 +750,11 @@ function addon:StartGameLoop()
                 nes:frame()
             end)
             if not ok then
-                print("|cffff0000WowFC|r: 运行错误: " .. tostring(err))
+                print("|cffff0000WowFC|r: " .. (L["MSG_RUNTIME_ERROR"] or "Runtime error: ") .. tostring(err))
                 isRunning = false
                 nes:stop()
                 self:RestoreWoWSound()
-                MainFrame.pauseBtn:SetText("开始")
+                MainFrame.pauseBtn:SetText(L["BTN_START"] or "Start")
                 return
             end
         end
@@ -805,9 +835,9 @@ function addon:ResetFC()
         self:StopGameLoop()
         self:RestoreWoWSound()
         nes:reset()
-        MainFrame.pauseBtn:SetText("开始")
+        MainFrame.pauseBtn:SetText(L["BTN_START"] or "Start")
         isRunning = false
-        MainFrame.statusText:SetText("已重置")
+        MainFrame.statusText:SetText(L["STATUS_RESET"] or "Reset")
         
         -- 清空屏幕
         if renderer then
@@ -893,24 +923,24 @@ end
 -- 显示调试信息
 function addon:ShowDebugInfo()
     if not nes then
-        print("|cffff0000WowFC|r: 未加载ROM")
+        print("|cffff0000WowFC|r: " .. (L["MSG_NO_ROM"] or "No ROM loaded"))
         return
     end
     
-    print("|cff00ff00=== WowFC 调试信息 ===|r")
+    print("|cff00ff00" .. (L["TITLE_DEBUG_INFO"] or "=== WowFC Debug Info ===") .. "|r")
     
     local dirtyCount = 0
     if nes.ppu and nes.ppu.dirty_tiles then
         for _ in pairs(nes.ppu.dirty_tiles) do dirtyCount = dirtyCount + 1 end
     end
-    print(string.format("帧计数: %d  DirtyTiles: %d", frameCount, dirtyCount))
+    print(string.format(L["DEBUG_FRAME_COUNT"] or "Frames: %d  DirtyTiles: %d", frameCount, dirtyCount))
     
     -- PPU状态
     if nes.ppu then
-        print(string.format("PPU扫描线: %d", nes.ppu.scanline))
-        print(string.format("背景显示: %s", nes.ppu.f_bgVisibility == 1 and "开" or "关"))
-        print(string.format("精灵显示: %s", nes.ppu.f_spVisibility == 1 and "开" or "关"))
-        print(string.format("NMI: %s", nes.ppu.f_nmiOnVblank == 1 and "启用" or "禁用"))
+        print(string.format(L["DEBUG_PPU_SCANLINE"] or "PPU Scanline: %d", nes.ppu.scanline))
+        print(string.format(L["DEBUG_BG_DISPLAY"] or "BG Display: %s", nes.ppu.f_bgVisibility == 1 and (L["ON"] or "On") or (L["OFF"] or "Off")))
+        print(string.format(L["DEBUG_SP_DISPLAY"] or "Sprite Display: %s", nes.ppu.f_spVisibility == 1 and (L["ON"] or "On") or (L["OFF"] or "Off")))
+        print(string.format(L["DEBUG_NMI"] or "NMI: %s", nes.ppu.f_nmiOnVblank == 1 and (L["ENABLED"] or "Enabled") or (L["DISABLED"] or "Disabled")))
     end
     
     -- CPU状态
@@ -925,21 +955,21 @@ end
 
 -- 显示帮助
 function addon:ShowHelp()
-    print(string.format("|cff00ff00=== WowFC v%s 帮助 ===|r", ADDON_VERSION))
-    print("|cffffd700【打开/关闭】|r |cffffff00/fc|r 切换主窗口")
-    print("|cffffd700【操控模式】|r 点窗口下方 |cffffff00操控|r 按钮切换。开启时 FC 独占键盘,WoW 角色不响应。")
-    print("                |cffffff00ESC|r 一键退出操控模式。加载 ROM 时自动开启。")
-    print("|cffffd700【自定义按键】|r 点 |cffffff00按键|r 按钮。支持键盘 / 手柄 / 连发(30Hz 自动按 A/B)。")
-    print("                启用手柄前先在 |cffffff00WoW 设置 → 操作 → 启用游戏手柄|r 中开启。")
-    print("|cffffd700【默认按键】|r")
-    print("  方向键 = 移动   Z = A   X = B   Enter/Space = Start   Tab = Select")
-    print("|cffffd700【命令】|r")
-    print("  |cffffff00/fc skip <N>|r  帧跳过(1=关,2-10=每 N 帧渲染一帧;或 |cffffff00auto|r 自动)")
-    print("  |cffffff00/fc prof|r       性能数据  |cffffff00/fc profreset|r 清零")
-    print("  |cffffff00/fc bench [N]|r  渲染器 A/B 基准(对比 SetColorTexture 与 SetTexCoord 的 Present 耗时)")
-    print("  |cffffff00/fc boost|r      开关性能增强(运行时解除 WoW 帧率上限)")
-    print("  |cffffff00/fc sound <on|off>|r 开关声音(预录制音色文件对位播放)")
-    print("  |cffffff00/fc debug|r      运行时状态")
+    print(string.format("|cff00ff00" .. (L["TITLE_HELP"] or "=== WowFC v%s Help ===") .. "|r", ADDON_VERSION))
+    print(L["HELP_TOGGLE"] or "|cffffd700[Open/Close]|r |cffffff00/fc|r toggles the main window")
+    print(L["HELP_CONTROL"] or "|cffffd700[Control Mode]|r Click the Control button. When on, FC takes keyboard input and WoW character does not respond.")
+    print(L["HELP_CONTROL_ESC"] or "                |cffffff00ESC|r exits control mode instantly. Auto-enabled when loading a ROM.")
+    print(L["HELP_KEYBINDING"] or "|cffffd700[Custom Keys]|r Click Keys. Supports keyboard / gamepad / turbo (30Hz auto A/B).")
+    print(L["HELP_KEYBINDING_PAD"] or "                Enable gamepad first in |cffffff00WoW Settings → Controls → Enable Gamepad|r.")
+    print(L["HELP_DEFAULT_KEYS"] or "|cffffd700[Default Keys]|r")
+    print(L["HELP_DEFAULT_KEYS_DETAIL"] or "  Arrows = move   Z = A   X = B   Enter/Space = Start   Tab = Select")
+    print(L["HELP_COMMANDS"] or "|cffffd700[Commands]|r")
+    print(L["HELP_CMD_SKIP"] or "  |cffffff00/fc skip <N>|r  Frame skip (1=off, 2-10=render 1/N frames; or |cffffff00auto|r)")
+    print(L["HELP_CMD_PROF"] or "  |cffffff00/fc prof|r       Performance data  |cffffff00/fc profreset|r reset")
+    print(L["HELP_CMD_BENCH"] or "  |cffffff00/fc bench [N]|r  Renderer A/B benchmark")
+    print(L["HELP_CMD_BOOST"] or "  |cffffff00/fc boost|r      Toggle performance boost")
+    print(L["HELP_CMD_SOUND"] or "  |cffffff00/fc sound <on|off>|r Toggle sound")
+    print(L["HELP_CMD_DEBUG"] or "  |cffffff00/fc debug|r      Runtime status")
 end
 
 -- 事件注册

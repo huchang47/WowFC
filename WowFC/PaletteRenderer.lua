@@ -23,6 +23,9 @@
 local PaletteRenderer = {}
 _G.WowFC_PaletteRenderer = PaletteRenderer
 
+-- 本地化字符串表
+local L = _G.WowFC_Locale or {}
+
 local SCREEN_WIDTH = 256
 local SCREEN_HEIGHT = 240
 
@@ -66,7 +69,7 @@ local lookupReady = buildLookup()
 
 function PaletteRenderer:Create(parent, options)
     if not lookupReady then
-        print("|cffff0000WowFC|r: PaletteRenderer 缺少调色板数据(PaletteData_Generated.lua 未加载),请先运行 Tools/gen_palette_tga.py 并在 TOC 中声明。")
+        print("|cffff0000WowFC|r: " .. (L["MSG_NO_PALETTE_DATA"] or "PaletteRenderer is missing palette data (PaletteData_Generated.lua not loaded). Please run Tools/gen_palette_tga.py and declare it in the TOC."))
         return nil
     end
 
@@ -214,7 +217,7 @@ function PaletteRenderer:Create(parent, options)
     end
 
     function renderer:GetModeName()
-        return "调色板 256x240"
+        return L["MODE_PALETTE"] or "Palette 256x240"
     end
 
     function renderer:SetMode(_mode) end

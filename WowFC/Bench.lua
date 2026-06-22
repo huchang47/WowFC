@@ -22,6 +22,9 @@
 local Bench = {}
 _G.WowFC_Bench = Bench
 
+-- 本地化字符串表
+local L = _G.WowFC_Locale or {}
+
 local SCREEN_WIDTH = 256
 local SCREEN_HEIGHT = 240
 local PIXELS = SCREEN_WIDTH * SCREEN_HEIGHT
@@ -81,7 +84,8 @@ function Bench:Capture(buffer, ppu)
 
     if #self._snaps >= self._wantFrames then
         self._recording = false
-        print(string.format("|cff00ff00WowFC Bench|r: 已录制 %d 帧,开始离屏对比(分帧执行,稍候)...",
+        print(string.format("|cff00ff00WowFC Bench|r: " ..
+            (L["MSG_BENCH_RECORDED"] or "Recorded %d frames, starting off-screen comparison (split-frame execution, please wait)..."),
             #self._snaps))
         self:_drive()
     end
@@ -90,14 +94,15 @@ end
 -- 开始录制。frames:录制帧数;repeats:每渲染器回放遍数。
 function Bench:Start(frames, repeats)
     if self._recording then
-        print("|cffff8800WowFC Bench|r: 正在录制中,请稍候。")
+        print("|cffff8800WowFC Bench|r: " .. (L["MSG_BENCH_RECORDING"] or "Recording, please wait."))
         return
     end
     self._wantFrames = frames or 60
     self._repeats = repeats or 3
     self._snaps = {}
     self._recording = true
-    print(string.format("|cff00ff00WowFC Bench|r: 录制 %d 帧真实画面中...(确保游戏正在运行/有画面变化)",
+    print(string.format("|cff00ff00WowFC Bench|r: " ..
+        (L["MSG_BENCH_START"] or "Recording %d real frames... (make sure the game is running /画面 has changes)"),
         self._wantFrames))
 end
 
@@ -149,7 +154,7 @@ end
 function Bench:_runAll()
     local snaps = self._snaps
     if not snaps or #snaps == 0 then
-        print("|cffff0000WowFC Bench|r: 没有录到帧,先 /fc bench 并让游戏跑起来。")
+        print("|cffff0000WowFC Bench|r: " .. (L["MSG_BENCH_NO_FRAMES"] or "No frames recorded. Run /fc bench while the game is running."))
         return
     end
 
@@ -167,13 +172,13 @@ function Bench:_runAll()
     -- 两个渲染器各 6 万多 texture,分到两帧创建,避免单帧超时
     if not self._ultra then
         local f = _G.WowFC_UltraRenderer
-        if not f then print("|cffff0000WowFC Bench|r: UltraRenderer 未加载"); return end
+        if not f then print("|cffff0000WowFC Bench|r: " .. (L["MSG_BENCH_NO_ULTRA"] or "UltraRenderer not loaded")); return end
         self._ultra = f:Create(self._holder, { scale = 2, targetFps = 60 })
         coroutine.yield()
     end
     if not self._palette then
         local f = _G.WowFC_PaletteRenderer
-        if not f then print("|cffff0000WowFC Bench|r: PaletteRenderer 未加载"); return end
+        if not f then print("|cffff0000WowFC Bench|r: " .. (L["MSG_BENCH_NO_PALETTE"] or "PaletteRenderer not loaded")); return end
         self._palette = f:Create(self._holder, { scale = 2, targetFps = 60 })
         if not self._palette then return end  -- 缺调色板数据,Create 已自行提示
         coroutine.yield()
@@ -197,24 +202,24 @@ function Bench:_runAll()
         return string.format("%.2fx", a / b)
     end
 
-    print("|cff00ff00===== WowFC 渲染器 A/B 基准 =====|r")
-    print(string.format("录制帧: %d  回放: %d 遍  模式分布: skip=%d partial=%d full=%d",
+    print("|cff00ff00" .. (L["TITLE_BENCH"] or "===== WowFC Renderer A/B Benchmark =====") .. "|r")
+    print(string.format(L["BENCH_STATS"] or "Frames: %d  Repeats: %d  Mode distribution: skip=%d partial=%d full=%d",
         #snaps, rep, modeCount.skip, modeCount.partial, modeCount.full))
-    print(string.format("steady 改色/帧: Ultra=%.0f  Palette=%.0f(应一致,验证视觉等价)",
+    print(string.format(L["BENCH_PIXELS"] or "steady changed pixels/frame: Ultra=%.0f  Palette=%.0f (should match, verifies visual equivalence)",
         uSteadyChg, pSteadyChg))
-    print("|cffffd700— steady(脏检查生效,日常表现)—|r")
-    print(string.format("  UltraRenderer  (SetColorTexture): %.4f ms/帧", uSteadyMs))
-    print(string.format("  PaletteRenderer(SetTexCoord)    : %.4f ms/帧", pSteadyMs))
-    print(string.format("  Palette 相对 Ultra: %s  %s",
+    print("|cffffd700" .. (L["BENCH_STEADY"] or "— steady (dirty-check active, daily feel) —") .. "|r")
+    print(string.format(L["BENCH_ULTRA_STEADY"] or "  UltraRenderer  (SetColorTexture): %.4f ms/frame", uSteadyMs))
+    print(string.format(L["BENCH_PALETTE_STEADY"] or "  PaletteRenderer(SetTexCoord)    : %.4f ms/frame", pSteadyMs))
+    print(string.format(L["BENCH_RATIO"] or "  Palette vs Ultra: %s  %s",
         ratio(uSteadyMs, pSteadyMs),
-        (pSteadyMs < uSteadyMs) and "|cff00ff00(更快)|r" or "|cffff8800(未更快)|r"))
-    print("|cffffd700— full(全屏 61440 像素重绘,上限)—|r")
-    print(string.format("  UltraRenderer  : %.4f ms/帧", uFullMs))
-    print(string.format("  PaletteRenderer: %.4f ms/帧", pFullMs))
-    print(string.format("  Palette 相对 Ultra: %s  %s",
+        (pSteadyMs < uSteadyMs) and "|cff00ff00" .. (L["FASTER"] or "(faster)") .. "|r" or "|cffff8800" .. (L["NOT_FASTER"] or "(not faster)") .. "|r"))
+    print("|cffffd700" .. (L["BENCH_FULL"] or "— full (full-screen 61440 pixels redraw, worst-case) —") .. "|r")
+    print(string.format(L["BENCH_ULTRA_FULL"] or "  UltraRenderer  : %.4f ms/frame", uFullMs))
+    print(string.format(L["BENCH_PALETTE_FULL"] or "  PaletteRenderer: %.4f ms/frame", pFullMs))
+    print(string.format(L["BENCH_RATIO"] or "  Palette vs Ultra: %s  %s",
         ratio(uFullMs, pFullMs),
-        (pFullMs < uFullMs) and "|cff00ff00(更快)|r" or "|cffff8800(未更快)|r"))
-    print("|cff888888提示:steady 是日常体感;若两者 steady 都很小,说明 Present 不是瓶颈,优化重心应在 PPU/CPU。|r")
+        (pFullMs < uFullMs) and "|cff00ff00" .. (L["FASTER"] or "(faster)") .. "|r" or "|cffff8800" .. (L["NOT_FASTER"] or "(not faster)") .. "|r"))
+    print("|cff888888" .. (L["BENCH_TIP"] or "Tip: steady is the daily metric; if both steady values are small, Present is not the bottleneck — focus on PPU/CPU.") .. "|r")
 end
 
 -- 启动/泵动协程:每次只恢复一段,跑完一段就让出一帧,直到协程结束。
@@ -223,7 +228,7 @@ function Bench:_drive()
     local function pump()
         local ok, err = coroutine.resume(co)
         if not ok then
-            print("|cffff0000WowFC Bench|r: 运行出错: " .. tostring(err))
+            print("|cffff0000WowFC Bench|r: " .. (L["MSG_BENCH_ERROR"] or "Runtime error: ") .. tostring(err))
             self:_restoreGame()
             return
         end

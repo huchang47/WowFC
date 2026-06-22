@@ -26,6 +26,9 @@
 local UltraRenderer = {}
 _G.WowFC_UltraRenderer = UltraRenderer
 
+-- 本地化字符串表
+local L = _G.WowFC_Locale or {}
+
 local SCREEN_WIDTH = 256
 local SCREEN_HEIGHT = 240
 
@@ -198,7 +201,7 @@ function UltraRenderer:Create(parent, options)
     -- 兼容旧接口
     --------------------------------------------------------------------
     function renderer:GetModeName()
-        return "原生 256x240"
+        return L["MODE_NATIVE"] or "Native 256x240"
     end
 
     function renderer:SetMode(_mode)

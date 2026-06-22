@@ -8,6 +8,11 @@
 ## IconTexture: Interface\AddOns\WowFC\WowFCLogo.tga
 ## SavedVariables: WowFCDB
 
+# Locales (load default first, then override for active client locale)
+Locales\enUS.lua
+Locales\zhCN.lua
+Locales\jaJP.lua
+
 # Utils
 Utils\BitOps.lua
 Utils\Buffer.lua

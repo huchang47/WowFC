@@ -9,6 +9,9 @@ local _G = _G
 WowFC_Keybinding = {}
 local M = WowFC_Keybinding
 
+-- 本地化字符串表
+local L = _G.WowFC_Locale or {}
+
 -- ============================================================
 -- 默认按键映射
 -- ============================================================
@@ -32,16 +35,16 @@ M.DEFAULT_TURBO_BINDINGS = {
     B = {},
 }
 
--- NES 按钮显示名(中文)
+-- NES 按钮显示名(本地化)
 M.BUTTON_NAMES = {
-    [Controller.BUTTON_A]      = "A",
-    [Controller.BUTTON_B]      = "B",
-    [Controller.BUTTON_SELECT] = "选择",
-    [Controller.BUTTON_START]  = "开始",
-    [Controller.BUTTON_UP]     = "↑ 上",
-    [Controller.BUTTON_DOWN]   = "↓ 下",
-    [Controller.BUTTON_LEFT]   = "← 左",
-    [Controller.BUTTON_RIGHT]  = "→ 右",
+    [Controller.BUTTON_A]      = L["BUTTON_A"]      or "A",
+    [Controller.BUTTON_B]      = L["BUTTON_B"]      or "B",
+    [Controller.BUTTON_SELECT] = L["BUTTON_SELECT"] or "Select",
+    [Controller.BUTTON_START]  = L["BUTTON_START"]  or "Start",
+    [Controller.BUTTON_UP]     = L["BUTTON_UP"]     or "Up",
+    [Controller.BUTTON_DOWN]   = L["BUTTON_DOWN"]   or "Down",
+    [Controller.BUTTON_LEFT]   = L["BUTTON_LEFT"]   or "Left",
+    [Controller.BUTTON_RIGHT]  = L["BUTTON_RIGHT"]  or "Right",
 }
 
 -- 按钮顺序(UI 显示用)
@@ -246,7 +249,7 @@ local KEY_BLACKLIST = {  -- 不允许绑的键
 
 -- 把按钮的当前绑定列表转成可读字符串
 local function bindingsToString(keys)
-    if not keys or #keys == 0 then return "(未绑定)" end
+    if not keys or #keys == 0 then return L["UNBOUND"] or "(unbound)" end
     return table.concat(keys, ", ")
 end
 
@@ -268,14 +271,14 @@ function M:CreateUI()
     f.TitleBg:SetHeight(30)
     f.title = f:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
     f.title:SetPoint("TOP", f.TitleBg, "TOP", 0, -8)
-    f.title:SetText("WowFC 按键设置")
+    f.title:SetText(L["TITLE_KEYBINDING"] or "WowFC Key Bindings")
 
     -- 顶部说明文字 / 录键提示
     f.hint = f:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     f.hint:SetPoint("TOP", f, "TOP", 0, -36)
     f.hint:SetWidth(380)
     f.hint:SetJustifyH("CENTER")
-    f.hint:SetText("点 [+] 添加按键(键盘或手柄),ESC 退出")
+    f.hint:SetText(L["HINT_KEYBINDING"] or "Click [+] to add a key (keyboard or gamepad), ESC to exit")
 
     -- 录键状态:一旦进入,所有键盘输入都被吞掉用于绑定
     f._recording = false
@@ -306,12 +309,12 @@ function M:CreateUI()
         row.keys:SetPoint("LEFT", row, "LEFT", keysX - nameX, 0)
         row.keys:SetWidth(150)
         row.keys:SetJustifyH("LEFT")
-        row.keys:SetText("(未绑定)")
+        row.keys:SetText(L["UNBOUND"] or "(unbound)")
 
         local addBtn = CreateFrame("Button", nil, row, "UIPanelButtonTemplate")
         addBtn:SetSize(50, 20)
         addBtn:SetPoint("LEFT", row, "LEFT", addBtnX - nameX, 0)
-        addBtn:SetText("+ 添加")
+        addBtn:SetText(L["BTN_ADD"] or "+ Add")
         addBtn:SetScript("OnClick", function()
             M:_BeginRecord(type_, id)
         end)
@@ -319,7 +322,7 @@ function M:CreateUI()
         local clearBtn = CreateFrame("Button", nil, row, "UIPanelButtonTemplate")
         clearBtn:SetSize(50, 20)
         clearBtn:SetPoint("LEFT", row, "LEFT", clearBtnX - nameX, 0)
-        clearBtn:SetText("清空")
+        clearBtn:SetText(L["BTN_CLEAR"] or "Clear")
         clearBtn:SetScript("OnClick", function()
             if type_ == "button" then
                 M:ClearBinding(id)
@@ -345,12 +348,12 @@ function M:CreateUI()
     -- 分隔线 + 标签
     local turboLabel = f:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
     turboLabel:SetPoint("TOPLEFT", f, "TOPLEFT", 20, y - 8)
-    turboLabel:SetText("连发(按住 30Hz 自动按):")
+    turboLabel:SetText(L["LABEL_TURBO"] or "Turbo (hold for 30Hz auto-fire):")
     y = y - 22
 
     -- 2 个连发槽
     for _, slot in ipairs({ "A", "B" }) do
-        local row = makeRow(f, y, "连发 " .. slot, "turbo", slot)
+        local row = makeRow(f, y, (L["TURBO_SLOT"] or "Turbo ") .. slot, "turbo", slot)
         f._rows[#f._rows + 1] = row
         y = y - rowH
     end
@@ -359,7 +362,7 @@ function M:CreateUI()
     local resetBtn = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
     resetBtn:SetSize(100, 22)
     resetBtn:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", 20, 16)
-    resetBtn:SetText("恢复默认")
+    resetBtn:SetText(L["BTN_RESET_DEFAULT"] or "Reset Default")
     resetBtn:SetScript("OnClick", function()
         M:ResetToDefault()
         M:RefreshUI()
@@ -368,7 +371,7 @@ function M:CreateUI()
     local closeBtn = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
     closeBtn:SetSize(80, 22)
     closeBtn:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -16, 16)
-    closeBtn:SetText("关闭")
+    closeBtn:SetText(L["BTN_CLOSE"] or "Close")
     closeBtn:SetScript("OnClick", function() f:Hide() end)
 
     -- 接收键盘(包括 WoW 启用 gamepad 后的手柄按键如 PadAButton)
@@ -406,10 +409,10 @@ function M:_BeginRecord(type_, id)
     if type_ == "button" then
         label = self.BUTTON_NAMES[id] or tostring(id)
     else
-        label = "连发 " .. tostring(id)
+        label = (L["TURBO_SLOT"] or "Turbo ") .. tostring(id)
     end
     KeybindingFrame.hint:SetText(
-        "|cffff8800按下要绑定到 [" .. label .. "] 的键(ESC 取消)|r")
+        string.format(L["MSG_RECORD_KEY"] or "|cffff8800Press the key to bind to [%s] (ESC to cancel)|r", label))
 end
 
 function M:_EndRecord(canceled)
@@ -418,9 +421,9 @@ function M:_EndRecord(canceled)
     KeybindingFrame._recordTarget = nil
     KeybindingFrame:SetPropagateKeyboardInput(true)
     if canceled then
-        KeybindingFrame.hint:SetText("点 [+] 添加按键(键盘或手柄),ESC 退出")
+        KeybindingFrame.hint:SetText(L["HINT_KEYBINDING"] or "Click [+] to add a key (keyboard or gamepad), ESC to exit")
     else
-        KeybindingFrame.hint:SetText("|cff00ff00已添加|r — 点 [+] 继续添加,或关闭窗口")
+        KeybindingFrame.hint:SetText((L["MSG_KEY_ADDED"] or "|cff00ff00Added|r") .. (L["MSG_CONTINUE_ADD"] or " — click [+] to add more, or close the window"))
     end
 end
 

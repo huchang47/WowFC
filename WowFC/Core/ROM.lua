@@ -13,6 +13,9 @@ local rshift = bit.rshift
 _G.ROM = {}
 ROM.__index = ROM
 
+-- 本地化字符串表
+local L = _G.WowFC_Locale or {}
+
 -- 镜像类型
 ROM.HORIZONTAL_MIRRORING = 0
 ROM.VERTICAL_MIRRORING = 1
@@ -216,7 +219,7 @@ function ROM:createMapper()
     if print then
         local typeName = self.MAPPER_TYPE[self.mapperType] or "Unknown"
         print(string.format(
-            "|cffff8800WowFC|r: 不支持的 mapper %d (%s),退化到 NROM,游戏可能无法正常运行。",
+            "|cffff8800WowFC|r: " .. (L["MSG_UNSUPPORTED_MAPPER"] or "Unsupported mapper %d (%s), falling back to NROM; the game may not work correctly."),
             self.mapperType, typeName))
     end
     return _G.Mapper0:new(self.nes, self)
