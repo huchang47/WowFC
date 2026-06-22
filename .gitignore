@@ -1,5 +1,6 @@
 .history/
 build/
+发布版本/
 Utils/ROMData_Generated.lua
 tools/compat_mapper0.txt
 ROMs/
