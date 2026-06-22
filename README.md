@@ -34,7 +34,7 @@ A World of Warcraft addon that runs FC/NES games inside the game.
 
 ### Method 2: CurseForge
 
-Install via [CurseForge](https://www.curseforge.com/wow/addons/wowfc) and let the client manage updates.
+Install via [CurseForge](https://www.curseforge.com/wow/addons/WowFC) and let the client manage updates.
 
 ### Method 3: Git Clone
 
@@ -47,7 +47,7 @@ git clone https://github.com/huchang47/WowFC.git WowFC
 
 ### Basic Controls
 
-- Type `/fc` or `/wowfc` to open/close the emulator window
+- Type `/fc` or `/WowFC` to open/close the emulator window
 - Press `ESC` to exit control mode
 - Window is draggable to adjust position
 

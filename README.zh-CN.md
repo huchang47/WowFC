@@ -34,7 +34,7 @@
 
 ### 方法二：CurseForge
 
-通过 [CurseForge](https://www.curseforge.com/wow/addons/wowfc) 安装，客户端会自动管理更新。
+通过 [CurseForge](https://www.curseforge.com/wow/addons/WowFC) 安装，客户端会自动管理更新。
 
 ### 方法三：Git 克隆
 
@@ -47,7 +47,7 @@ git clone https://github.com/huchang47/WowFC.git WowFC
 
 ### 基本操作
 
-- 输入 `/fc` 或 `/wowfc` 打开/关闭模拟器窗口
+- 输入 `/fc` 或 `/WowFC` 打开/关闭模拟器窗口
 - 按 `ESC` 键退出操控模式
 - 窗口可拖动调整位置
 

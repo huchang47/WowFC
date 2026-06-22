@@ -33,7 +33,7 @@ APU.AUDIBLE_MAX_HZ = 20000
 -- SoundBackend:平台播放适配(集中所有 WoW 音频 API 调用,便于降级与测试替身注入)。
 -- 作为 APU 的子表暴露(APU.SoundBackend),把"播放"(副作用)与"解析"(纯逻辑)分离。
 -- 所有调用用 pcall 包裹吞掉异常,绝不向上冒泡到帧循环(需求 4.3/5.5)。
--- 选用 "SFX" 声道:受"音效音量"控制、可被玩家静音,且不碰受保护 CVar(设计 C4)。
+-- 选用 "Master" 声道:运行时可静音 WoW 音效/音乐通道,同时保留 FC 音色播放。
 -- ============================================================================
 local SoundBackend = {}
 
@@ -44,7 +44,7 @@ function SoundBackend.isAvailable()
 end
 
 -- 播放一个音色文件,返回句柄(soundHandle);失败/被静音返回 nil。
--- 内部调用 PlaySoundFile(path, "SFX"):
+-- 内部调用 PlaySoundFile(path, "Master"):
 --   - 平台缺失 PlaySoundFile     → 返回 nil(no-op,降级)
 --   - 调用抛错(pcall 捕获)       → 吞掉异常,返回 nil(绝不冒泡)
 --   - willPlay == nil(被静音等)  → 不视为错误,返回 nil(无可用句柄)
@@ -54,7 +54,7 @@ function SoundBackend.play(path)
     if type(playFn) ~= "function" then
         return nil
     end
-    local ok, willPlay, handle = pcall(playFn, path, "SFX")
+    local ok, willPlay, handle = pcall(playFn, path, "Master")
     if not ok then
         return nil          -- 平台异常:吞掉,降级为不发声
     end

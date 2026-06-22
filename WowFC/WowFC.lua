@@ -39,6 +39,14 @@ local frameCount = 0
 local lastFrameTime = 0
 local frameTimer = nil
 
+local WOW_MUTE_CVARS = {
+    "Sound_EnableSFX",
+    "Sound_EnableMusic",
+    "Sound_EnableAmbience",
+    "Sound_EnableDialog",
+    "Sound_EnableErrorSpeech",
+}
+
 -- 按键映射模块(Keybinding.lua)
 -- 提供:
 --   M:Load() / M:Save()
@@ -69,7 +77,7 @@ function addon:OnInitialize()
     -- 注册斜杠命令
     SLASH_WowFC1 = "/fc"
     SLASH_WowFC2 = "/wfc"
-    SLASH_WowFC3 = "/wowfc"
+    SLASH_WowFC3 = "/WowFC"
     SlashCmdList["WowFC"] = function(msg)
         msg = (msg or ""):lower():gsub("^%s+", ""):gsub("%s+$", "")
         if msg == "prof" then
@@ -180,6 +188,16 @@ function addon:CreateMainFrame()
     MainFrame:SetScript("OnDragStop", MainFrame.StopMovingOrSizing)
     MainFrame:SetFrameStrata("HIGH")
     MainFrame:Hide()
+    MainFrame:SetScript("OnHide", function()
+        if isRunning then
+            addon:PauseGame()
+        else
+            addon:RestoreWoWSound()
+        end
+        if addon._applyControlMode and addon._controlMode then
+            addon._applyControlMode(false)
+        end
+    end)
 
     -- 标题
     MainFrame.TitleBg:SetHeight(30)
@@ -332,17 +350,39 @@ end
 function addon:ToggleFrame()
     if MainFrame:IsShown() then
         MainFrame:Hide()
-        self:StopGameLoop()
-        -- 关窗时一并关掉操控,避免独占键盘后忘了切回 WoW
-        if self._applyControlMode and self._controlMode then
-            self._applyControlMode(false)
-        end
     else
         MainFrame:Show()
     end
 end
 
 -- ROM 文件列表
+function addon:MuteWoWSound()
+    if not (GetCVar and SetCVar) then return end
+    if not self._savedSoundCVars then
+        self._savedSoundCVars = {}
+        for _, name in ipairs(WOW_MUTE_CVARS) do
+            self._savedSoundCVars[name] = GetCVar(name)
+        end
+    end
+    for _, name in ipairs(WOW_MUTE_CVARS) do
+        if self._savedSoundCVars[name] ~= nil then
+            SetCVar(name, "0")
+        end
+    end
+end
+
+function addon:RestoreWoWSound()
+    if not self._savedSoundCVars then return end
+    if SetCVar then
+        for name, value in pairs(self._savedSoundCVars) do
+            if value ~= nil then
+                SetCVar(name, value)
+            end
+        end
+    end
+    self._savedSoundCVars = nil
+end
+
 local ROM_LIST = {}
 
 -- 扫描 ROMs
@@ -596,6 +636,29 @@ function addon:RenderDebugFrame()
 end
 
 -- 开始/暂停
+function addon:PauseGame()
+    if not isRunning then
+        self:RestoreWoWSound()
+        return false
+    end
+    self:StopGameLoop()
+    if MainFrame and MainFrame.pauseBtn then MainFrame.pauseBtn:SetText("继续") end
+    isRunning = false
+    self:RestoreWoWSound()
+    return true
+end
+
+function addon:ResumeGame()
+    if not nes then return false end
+    self:StartGameLoop()
+    if MainFrame and MainFrame.pauseBtn then MainFrame.pauseBtn:SetText("暂停") end
+    if self._applyControlMode then
+        self._applyControlMode(true)
+    end
+    isRunning = true
+    return true
+end
+
 function addon:TogglePause()
     if not nes then
         print("|cffff0000WowFC|r: 请先加载ROM")
@@ -603,13 +666,9 @@ function addon:TogglePause()
     end
 
     if isRunning then
-        self:StopGameLoop()
-        MainFrame.pauseBtn:SetText("继续")
-        isRunning = false
+        self:PauseGame()
     else
-        self:StartGameLoop()
-        MainFrame.pauseBtn:SetText("暂停")
-        isRunning = true
+        self:ResumeGame()
     end
 end
 
@@ -617,21 +676,11 @@ end
 -- bench 要密集回放,若游戏循环(每帧 CPU+PPU+渲染)还在后台跑,两者累计 CPU 会
 -- 触发 WoW 对单个 addon 的执行配额上限。暂停后让 bench 独占,测量也更干净。
 function addon:PauseForBench()
-    if isRunning then
-        self:StopGameLoop()
-        isRunning = false
-        if MainFrame and MainFrame.pauseBtn then MainFrame.pauseBtn:SetText("继续") end
-        return true
-    end
-    return false
+    return self:PauseGame()
 end
 
 function addon:ResumeAfterBench()
-    if nes then
-        self:StartGameLoop()
-        isRunning = true
-        if MainFrame and MainFrame.pauseBtn then MainFrame.pauseBtn:SetText("暂停") end
-    end
+    self:ResumeGame()
 end
 
 -- 启动游戏循环
@@ -642,6 +691,7 @@ function addon:StartGameLoop()
     self:StopGameLoop()
 
     nes:start()
+    self:MuteWoWSound()
 
     -- 声音/渲染分离:模拟+apu:tick 按固定时间步每 NES 帧推进(声音准时),
     -- 渲染交给下面 OnUpdate 末尾的 presentDeferred,每 WoW 帧最多一次。
@@ -673,6 +723,7 @@ function addon:StartGameLoop()
                 print("|cffff0000WowFC|r: 运行错误: " .. tostring(err))
                 isRunning = false
                 nes:stop()
+                self:RestoreWoWSound()
                 MainFrame.pauseBtn:SetText("开始")
                 return
             end
@@ -752,6 +803,7 @@ end
 function addon:ResetFC()
     if nes then
         self:StopGameLoop()
+        self:RestoreWoWSound()
         nes:reset()
         MainFrame.pauseBtn:SetText("开始")
         isRunning = false
@@ -901,6 +953,7 @@ frame:SetScript("OnEvent", function(self, event, arg1)
         -- 保险:登出 / 重载前恢复帧率 CVar,
         -- 避免 maxfps=0 被持久化到 WoW 设置,影响下次进游戏
         addon:ApplyPerfCVars(false)
+        addon:RestoreWoWSound()
     end
 end)
 
