@@ -14,7 +14,3 @@ ignore:
   - screenshot.png
   - Tools
   - tools
-
-manual-changelog:
-  filename: README.md
-  markup-type: markdown
